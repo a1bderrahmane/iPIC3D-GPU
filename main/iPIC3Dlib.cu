@@ -334,6 +334,9 @@ int c_Solver::initCUDA(){
       // the constructor will copy particles from host to device
       pclsArrayHostPtr[i] = newHostPinnedObject<particleArrayCUDA>(part+i, streams[i]);
       pclsArrayCUDAPtr[i] = pclsArrayHostPtr[i]->copyToDevice();
+
+      // register the host pointer to pinned memory
+      cudaErrChk(cudaHostRegister(part[i].get_pcl_array().getList(), part[i].get_pcl_array().capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
       // clear the host pclArray
       part[i].get_pcl_array().clear(); // 0
 
@@ -378,10 +381,28 @@ int c_Solver::initCUDA(){
     momentParamCUDAPtr[i] = copyToDevice(momentParamHostPtr[i], streams[i]);
   }
 
+
+
   // simple device buffer, allocate one dimension array on device memory
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
   momentsCUDAPtr = new cudaTypeArray1<cudaCommonType>[ns];
   for(int i=0; i<ns; i++)cudaMallocAsync(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaCommonType), streams[i]);
+
+  { // register the 10 densities to host pinned memory
+    for(int i=0; i<ns; i++){
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getRHOns().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getJxs().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getJys().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getJzs().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpXXsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpXYsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpXZsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpYYsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpYZsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+      cudaErrChk(cudaHostRegister((void*)&(EMf->getpZZsn().get(i,0,0,0)), gridSize*sizeof(cudaCommonType), cudaHostRegisterDefault));
+    }
+
+  }
 
   cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
 
@@ -454,6 +475,23 @@ int c_Solver::deInitCUDA(){
   for(int i=0; i<ns*2; i++)cudaStreamDestroy(streams[i]);
   delete[] streams;
   delete[] stayedParticle;
+
+  { // unregister the pinned mem
+    for (int i = 0; i < ns; i++) {
+      cudaErrChk(cudaHostUnregister(part[i].get_pcl_array().getList()));
+
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getRHOns().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getJxs().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getJys().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getJzs().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpXXsn().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpXYsn().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpXZsn().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpYYsn().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpYZsn().get(i,0,0,0))));
+      cudaErrChk(cudaHostUnregister((void*)&(EMf->getpZZsn().get(i,0,0,0))));
+    }
+  }
 
   return 0;
 }
@@ -611,9 +649,13 @@ int c_Solver::cudaLauncherAsync(const int species){
   }
 
   if(x > part[species].get_pcl_list().capacity()){
+    // unregister the list
+    cudaErrChk(cudaHostUnregister(part[species].get_pcl_array().getList()));
     // expand the host array
     auto pclArray = part[species].get_pcl_array();
     pclArray.reserve(x * 1.5);
+    // register the list
+    cudaErrChk(cudaHostRegister(pclArray.getList(), pclArray.capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
   }
   exitingKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species+ns]>>>(pclsArrayCUDAPtr[species], 
                 departureArrayCUDAPtr[species], exitingArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]);
@@ -944,9 +986,18 @@ void c_Solver::WriteRestart(int cycle)
     
     { // copy the particles back to host, if restart output
       for(int i=0; i<ns; i++){
+        if(part[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
+          // unregister the list
+          cudaErrChk(cudaHostUnregister(part[i].get_pcl_array().getList()));
+          // expand the host array
+          auto pclArray = part[i].get_pcl_array();
+          pclArray.reserve(pclsArrayHostPtr[i]->getNOP());
+          // register the list
+          cudaErrChk(cudaHostRegister(pclArray.getList(), pclArray.capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
+        }
         cudaErrChk(cudaMemcpyAsync(part[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
                                   pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
-        part[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP());
+        part[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); // this will be corrected in the next mover
       }
       cudaErrChk(cudaDeviceSynchronize());
     }

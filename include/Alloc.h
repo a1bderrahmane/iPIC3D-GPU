@@ -97,13 +97,12 @@
     #define ALLOC_ALIGNED
     #define ASSUME_ALIGNED(X)
     #define ALIGNED(X)
-#if CUDA_ON==true
-    #define AlignedFree(S) (cudaErrChk(cudaFreeHost(S)))
-    #define AlignedAlloc(T, NUM) ((T*)allocateHostPinnedMem(sizeof(T), NUM)) 
-#else
+
     #define AlignedFree(S) (delete[] S)
     #define AlignedAlloc(T, NUM) (new T[NUM]) 
-#endif
+
+    #define AlignedFreePinned(S) (cudaFreeHost(S))
+    #define AlignedAllocPinned(T, NUM) ((T*)allocateHostPinnedMem(sizeof(T), NUM))
 
 #endif
 inline bool is_aligned(void *p, int N)
