@@ -359,9 +359,9 @@ void Grid3DCU::lapN2N(arr3_double lapN, const_arr3_double scFieldN,EMfields3D *E
   const VirtualTopology3D *vct = &get_vct();
   // calculate laplacian as divercence of gradient
   // allocate 3 gradients: defined on central points
-  array3_double gradXC(nxc, nyc, nzc);
-  array3_double gradYC(nxc, nyc, nzc);
-  array3_double gradZC(nxc, nyc, nzc);
+  static array3_double gradXC(nxc, nyc, nzc);
+  static array3_double gradYC(nxc, nyc, nzc);
+  static array3_double gradZC(nxc, nyc, nzc);
 
   gradN2C(gradXC, gradYC, gradZC, scFieldN);
   // communicate with BC
