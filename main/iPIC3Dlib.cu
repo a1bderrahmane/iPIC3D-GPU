@@ -406,6 +406,15 @@ int c_Solver::initCUDA(){
 
   cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
 
+  { // output path for data analysis
+    auto subDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(myrank) + "/";
+    for(int i = 0; i < ns; i++){
+      auto speciesOutputPath = subDomainOutputPath + "species" + std::to_string(i) + "/";
+      checkOutputFolder(speciesOutputPath);
+    }
+
+  }
+
   cudaDeviceSynchronize();
 
   if(MPIdata::get_rank() == 0)std::cout << "CUDA Init finished" << std::endl;

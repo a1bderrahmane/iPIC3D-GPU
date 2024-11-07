@@ -6,6 +6,10 @@
 #include "cudaReduction.cuh"
 
 #include <stdio.h>
+#include <string>
+#include <fstream>
+#include <iostream>
+
 
 namespace cudaGMM
 {
@@ -217,7 +221,7 @@ public:
         cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(T)*reductionTempArraySize));
     }
 
-    __host__ int initGMM(){
+    __host__ int initGMM(std::string outputPath){
 
         // do the GMR
         int step = 0;
@@ -230,10 +234,10 @@ public:
 
             // compare the log likelihood increament with the threshold, if the increament is smaller than the threshold, or the log likelihood is smaller than the previous one, output the GMM
             if(fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld){
-                std::cout << "Converged at step " << step << std::endl;
+                // std::cout << "Converged at step " << step << std::endl;
                 break;
             }
-            std::cout << "Step " << step << " log likelihood: " << logLikelihood << std::endl;
+            // std::cout << "Step " << step << " log likelihood: " << logLikelihood << std::endl;
             logLikelihoodOld = logLikelihood;
 
             // M
@@ -245,11 +249,11 @@ public:
             step++;
         }
 
-        return outputGMM();
+        return outputGMM(step, outputPath);
 
     }
 
-    __host__ int outputGMM(){
+    __host__ int outputGMM(int convergeStep, std::string outputPath){
         auto numComponents = paramHostPtr->numComponents;
         auto numData = dataHostPtr->getNumData();
         // copy the results to host and post process
@@ -263,68 +267,52 @@ public:
             weight[i] = exp(weight[i]);
         }
 
-        {
-            fprintf(stdout, "{\n");
-            fprintf(stdout, "\"model\": ");
-            
-            fprintf(stdout, "{\n");
-            fprintf(stdout, "\"pointDim\" : %zu,\n", dataDim);
-            fprintf(stdout, "\"numComponents\" : %zu,\n", paramHostPtr->numComponents);
-            fprintf(stdout, "\"mixtures\" : [\n");
-            for (size_t k = 0; k < paramHostPtr->numComponents; ++k) {
+        {  // output the GMM to json
+            std::ofstream file(outputPath);
+            if (!file.is_open()) {
+                std::cerr << "[!]Could not open file " << outputPath << std::endl;
+                return -1;
+            }
 
-                fprintf(stdout, "{\n");
-                fprintf(stdout, "\"pi\" : %.15f,\n", weight[k]);
-                fprintf(stdout, "\"mu\" : [ ");
+            file << "{\n";
+            file << "\"convergeStep\": " << convergeStep << ",\n";
+            file << "\"model\": {\n";
+            file << "\"dataDim\": " << dataDim << ",\n";
+            file << "\"numComponent\": " << numComponents << ",\n";
+            file << "\"components\": [\n";
+
+            for (size_t k = 0; k < numComponents; ++k) {
+                file << "{\n";
+                file << "\"weight\": " << weight[k] << ",\n";
+
+                file << "\"mean\": [ ";
                 for (size_t dim = 0; dim < dataDim; ++dim) {
-                    fprintf(stdout, "%.15f ", mean[k * dataDim + dim]);
-                    if(dim + 1 < dataDim) {
-                        fprintf(stdout, ", ");
+                    file << mean[k * dataDim + dim];
+                    if (dim + 1 < dataDim) {
+                        file << ", ";
                     }
                 }
-                fprintf(stdout, "],\n");
+                file << " ],\n";
 
-                fprintf(stdout, "\"sigma\" : [ ");
+                file << "\"coVariance\": [ ";
                 for (size_t dim = 0; dim < dataDim * dataDim; ++dim) {
-                    fprintf(stdout, "%.15f ", coVariance[k * dataDim * dataDim + dim]);
-                    if(dim + 1 < dataDim * dataDim) {
-                        fprintf(stdout, ", ");
+                    file << coVariance[k * dataDim * dataDim + dim];
+                    if (dim + 1 < dataDim * dataDim) {
+                        file << ", ";
                     }
                 }
-                fprintf(stdout, "]\n");
-                fprintf(stdout, "}");
+                file << " ]\n";
+                file << "}";
 
-                if(k + 1 != paramHostPtr->numComponents) { 
-                    fprintf(stdout, ", ");
+                if (k + 1 < numComponents) {
+                    file << ", ";
                 }
             }
-            fprintf(stdout, "]\n");
-            fprintf(stdout, "}\n");
 
-            fprintf(stdout, "}\n");
+            file << "]\n";
+            file << "}\n";
+            file << "}\n";
         }
-
-        // // print the results
-        // for(int i = 0; i < numComponents; i++){
-        //     std::cout << "Component " << i << ":" << std::endl;
-        //     std::cout << "Weight: " << weight[i] << std::endl;
-        //     std::cout << "Mean: ";
-        //     for(int j = 0; j < dataDim; j++){
-        //     std::cout << mean[i * dataDim + j] << " ";
-        //     }
-        //     std::cout << std::endl;
-        //     std::cout << "CoVariance: ";
-        //     for(int j = 0; j < dataDim * dataDim; j++){
-        //     std::cout << coVariance[i * dataDim * dataDim + j] << " ";
-        //     }
-        //     std::cout << std::endl;
-        //     std::cout << "CoVariance Decomposed: ";
-        //     for(int j = 0; j < dataDim * dataDim; j++){
-        //     std::cout << coVarianceDecomposed[i * dataDim * dataDim + j] << " ";
-        //     }
-        //     std::cout << std::endl;
-        //     std::cout << "Normalizer: " << normalizer[i] << std::endl;
-        // }
 
         return 0;
 

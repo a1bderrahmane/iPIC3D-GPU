@@ -7,6 +7,8 @@
 #include "GMM/cudaGMM.cuh"
 #include "particleArraySoACUDA.cuh"
 
+#include <string>
+
 
 namespace dataAnalysis
 {
@@ -19,8 +21,10 @@ using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>
 /**
  * @brief analysis function for each species, uv, uw, vw
  * @details It launches 3 threads for uv uw vw analysis in parallel
+ * 
+ * @param outputPath the output path for the species 
  */
-int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle){
+int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string outputPath, int device){
 
     
     using namespace particleArraySoA;
@@ -35,6 +39,8 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle){
 
     auto GMMLambda = [=](int i) mutable {
         using namespace cudaGMM;
+
+        cudaErrChk(cudaSetDevice(device));
 
         constexpr auto numComponent = 1;
 
@@ -64,9 +70,13 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle){
 
         GMMDataMultiDim<cudaCommonType, 2> GMMData(velocitySoACUDAPtr->getNOP(), &uvwPtr[i * 2]);
 
+        // generate exact output file path
+        std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
+        auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
+
         GMM<cudaCommonType, 2> gmm;
         gmm.config(&GMMParam, &GMMData);
-        return gmm.initGMM();
+        return gmm.initGMM(fileOutputPath); // the exact output file name
     };
 
     for(int i = 0; i < 3; i++){
@@ -90,12 +100,15 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle){
 int analysisEntre(c_Solver& KCode, int cycle){
     cudaErrChk(cudaSetDevice(KCode.cudaDeviceOnNode));
 
+    auto subDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
+
     // species by species to save VRAM
     for(int i = 0; i < KCode.ns; i++){
         // to SoA
         velocitySoA velocitySoACUDA(KCode.pclsArrayHostPtr[i], KCode.streams[i]);
-
-        GMMAnalysisSpecies(&velocitySoACUDA, cycle);
+        // output path
+        auto speciesOutputPath = subDomainOutputPath + "species" + std::to_string(i) + "/";
+        GMMAnalysisSpecies(&velocitySoACUDA, cycle, speciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;
@@ -107,7 +120,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
  */
 std::future<int> startAnalysis(c_Solver& KCode, int cycle){
 
-    if(cycle % 500 != 0){
+    if(cycle % 50 != 0){
         return std::future<int>();
     }
 

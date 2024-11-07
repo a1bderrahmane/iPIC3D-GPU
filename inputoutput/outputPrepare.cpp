@@ -36,7 +36,7 @@ int checkOutputFolder(std::string relativePath){
 
         } else throw std::runtime_error("Output path is not a directory");
     } else {
-        fs::create_directory(subdir);
+        fs::create_directories(subdir);
     }
 
     return 0;
