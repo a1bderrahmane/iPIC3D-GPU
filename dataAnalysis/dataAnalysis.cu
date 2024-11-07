@@ -6,6 +6,7 @@
 
 #include "GMM/cudaGMM.cuh"
 #include "particleArraySoACUDA.cuh"
+#include "velocityHistogram.cuh"
 
 #include <string>
 
@@ -100,15 +101,24 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string o
 int analysisEntre(c_Solver& KCode, int cycle){
     cudaErrChk(cudaSetDevice(KCode.cudaDeviceOnNode));
 
-    auto subDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
+    // ./velocityGMM/subDomain0/species0/uv_1000.json , like this
+    auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
+    auto HistogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(KCode.myrank) + "/";
 
     // species by species to save VRAM
     for(int i = 0; i < KCode.ns; i++){
         // to SoA
         velocitySoA velocitySoACUDA(KCode.pclsArrayHostPtr[i], KCode.streams[i]);
-        // output path
-        auto speciesOutputPath = subDomainOutputPath + "species" + std::to_string(i) + "/";
-        GMMAnalysisSpecies(&velocitySoACUDA, cycle, speciesOutputPath, KCode.cudaDeviceOnNode);
+
+        // histogram
+        auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        auto velocityHistogram = velocityHistogram::velocityHistogram(12000, histogramSpeciesOutputPath);
+        velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
+        velocityHistogram.collect(KCode.streams[i]);
+
+        // GMM
+        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        GMMAnalysisSpecies(&velocitySoACUDA, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;

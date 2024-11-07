@@ -407,10 +407,20 @@ int c_Solver::initCUDA(){
   cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
 
   { // output path for data analysis
-    auto subDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(myrank) + "/";
+    auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(myrank) + "/";
     for(int i = 0; i < ns; i++){
-      auto speciesOutputPath = subDomainOutputPath + "species" + std::to_string(i) + "/";
-      checkOutputFolder(speciesOutputPath);
+      auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+      if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
+        throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
+      }
+    }
+
+    auto histogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(myrank) + "/";
+    for(int i = 0; i < ns; i++){
+      auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species"s + std::to_string(i);
+      if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
+        throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
+      }
     }
 
   }

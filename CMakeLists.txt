@@ -161,6 +161,7 @@ if(CUDA_ON)
   list(APPEND include_path include/CUDA)
   list(APPEND include_path include/dataAnalysis)
   list(APPEND include_path include/dataAnalysis/GMM)
+  list(APPEND include_path include/dataAnalysis/Histogram)
   list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
 target_include_directories(
