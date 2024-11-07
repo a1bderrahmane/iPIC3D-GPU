@@ -8,7 +8,7 @@
 namespace particleArraySoA{
 
 template<typename T, int startElement = 0, int stopElement = 6>
-__global__ void particleToSoAKernel(SpeciesParticle* pclArray, int nop, particleArraySoACUDA<T>* pclArraySoA){
+__global__ void particleToSoAKernel(SpeciesParticle* pclArray, int nop, particleArraySoACUDA<T, startElement, stopElement>* pclArraySoA){
     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
     uint gridSize = gridDim.x * blockDim.x;
 
@@ -36,8 +36,7 @@ __host__ particleArraySoACUDA<T, startElement, stopElement>::particleArraySoACUD
 }
 
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType>;
-template __global__ void particleToSoAKernel<cudaCommonType>
-                            (SpeciesParticle* pclArray, int nop, particleArraySoA::particleArraySoACUDA<cudaCommonType>* pclArraySoA);
+template class particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
                             
 } // namespace particleArraySoA
 

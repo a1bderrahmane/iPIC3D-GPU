@@ -50,8 +50,18 @@ class OutputWrapperFPP;
 #endif
 
 namespace iPic3D {
+  class c_Solver;
+}
+
+namespace dataAnalysis {
+  int analysisEntre(iPic3D::c_Solver& KCode, int cycle);
+}
+
+namespace iPic3D {
 
   class c_Solver {
+
+  friend int dataAnalysis::analysisEntre(c_Solver& KCode, int cycle);
 
   public:
     ~c_Solver();

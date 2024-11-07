@@ -25,6 +25,8 @@
 #include "TimeTasks.h"
 #include <stdio.h>
 
+#include "dataAnalysis.cuh"
+
 using namespace iPic3D;
 
 int main(int argc, char **argv) {
@@ -53,7 +55,14 @@ while(j == 0){
       printf(" ======= Cycle %d ======= \n",i);
 
     timeTasks.resetCycle();
+
+    auto analysisFuture = dataAnalysis::startAnalysis(KCode, i);
+
     KCode.CalculateField(i); // E field
+
+    dataAnalysis::waitForAnalysis(analysisFuture);
+
+
     KCode.ParticlesMover(); //use the fields to calculate the new v and x for particles
     KCode.CalculateB(); // B field
     KCode.CalculateMoments(false); // the charge intense, current intense and pressure tensor, 
