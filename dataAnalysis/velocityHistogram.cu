@@ -41,7 +41,7 @@ __host__ int velocityHistogram::getRange(velocitySoA* pclArray, cudaStream_t str
     cudaErrChk(cudaMalloc(&minOutputDevice, sizeof(cudaCommonType) * gridSize * 3 * 2));
     maxOutputDevice = minOutputDevice + gridSize * 3;
 
-    std::cout << "nop: " << pclArray->getNOP() << std::endl;
+    // std::cout << "nop: " << pclArray->getNOP() << std::endl;
     for(int i=0; i<3; i++){ // UVW
         reduceMin<cudaCommonType, blockSize><<<gridSize, blockSize, blockSize * sizeof(cudaCommonType), stream>>>
             (pclArray->getElement(i), minOutputDevice + i * gridSize, pclArray->getNOP());

@@ -43,14 +43,14 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string o
 
         cudaErrChk(cudaSetDevice(device));
 
-        constexpr auto numComponent = 1;
+        constexpr auto numComponent = 2;
 
         cudaCommonType weightVector[numComponent];
         cudaCommonType meanVector[numComponent * 2];
         cudaCommonType coVarianceMatrix[numComponent * 4];
 
         for(int j = 0; j < numComponent; j++){
-            weightVector[j] = 1.0 / numComponent;
+            weightVector[j] = j == 0 ? 0.75 : 0.25;
             meanVector[j * 2] = 0.0;
             meanVector[j * 2 + 1] = 0.0;
             coVarianceMatrix[j * 4] = 1.0;
@@ -116,9 +116,9 @@ int analysisEntre(c_Solver& KCode, int cycle){
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
         velocityHistogram.collect(KCode.streams[i]);
 
-        // GMM
-        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        GMMAnalysisSpecies(&velocitySoACUDA, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
+        // // GMM
+        // auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        // GMMAnalysisSpecies(&velocitySoACUDA, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;
