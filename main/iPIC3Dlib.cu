@@ -652,10 +652,10 @@ int c_Solver::cudaLauncherAsync(const int species){
     // unregister the list
     cudaErrChk(cudaHostUnregister(part[species].get_pcl_array().getList()));
     // expand the host array
-    auto pclArray = part[species].get_pcl_array();
-    pclArray.reserve(x * 1.5);
+    auto pclArray = part[species].get_pcl_arrayPtr();
+    pclArray->reserve(x * 1.5);
     // register the list
-    cudaErrChk(cudaHostRegister(pclArray.getList(), pclArray.capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
+    cudaErrChk(cudaHostRegister(pclArray->getList(), pclArray->capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
   }
   exitingKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species+ns]>>>(pclsArrayCUDAPtr[species], 
                 departureArrayCUDAPtr[species], exitingArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]);
@@ -990,10 +990,10 @@ void c_Solver::WriteRestart(int cycle)
           // unregister the list
           cudaErrChk(cudaHostUnregister(part[i].get_pcl_array().getList()));
           // expand the host array
-          auto pclArray = part[i].get_pcl_array();
-          pclArray.reserve(pclsArrayHostPtr[i]->getNOP());
+          auto pclArray = part[i].get_pcl_arrayPtr();
+          pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
           // register the list
-          cudaErrChk(cudaHostRegister(pclArray.getList(), pclArray.capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
+          cudaErrChk(cudaHostRegister(pclArray->getList(), pclArray->capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
         }
         cudaErrChk(cudaMemcpyAsync(part[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
                                   pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
