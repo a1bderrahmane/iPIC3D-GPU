@@ -45,12 +45,12 @@ public:
      * @param max the maximum value of each dimension
      * @param resolution the resolution of each dimension
      */
-    __host__ void setHistogram(U* min, U* max, U* resolution){
+    __host__ void setHistogram(U* min, U* max, int* binThisDim){
         
         for(int i=0; i<dim; i++){
-            if(min[i] >= max[i] || resolution[i] <= 0){
-                std::cerr << "[!]Invalid histogram range or resolution" << std::endl;
-                std::cerr << "[!]min: " << min[i] << " max: " << max[i] << " res: " << resolution[i] << std::endl;
+            if(min[i] >= max[i] || binThisDim[i] <= 0){
+                std::cerr << "[!]Invalid histogram range or binThisDim" << std::endl;
+                std::cerr << "[!]min: " << min[i] << " max: " << max[i] << " binThisDim: " << binThisDim[i] << std::endl;
                 return;
             }
         }
@@ -59,9 +59,9 @@ public:
         for(int i=0; i<dim; i++){
             this->min[i] = min[i];
             this->max[i] = max[i];
-            this->resolution[i] = resolution[i];
 
-            size[i] = (max[i] - min[i]) / resolution[i];
+            size[i] = binThisDim[i];
+            this->resolution[i] = (max[i] - min[i]) / size[i];
             logicSize *= size[i];
         }
 
@@ -73,6 +73,31 @@ public:
         }
         
         resetBuffer();
+    }
+
+    __device__ void setHistogramDevice(U* min, U* max, int* binThisDim){
+        
+        for(int i=0; i<dim; i++){
+            if(min[i] >= max[i] || binThisDim[i] <= 0){
+                assert(0);
+                return;
+            }
+        }
+
+        logicSize = 1;
+        for(int i=0; i<dim; i++){
+            this->min[i] = min[i];
+            this->max[i] = max[i];
+
+            size[i] = binThisDim[i];
+            this->resolution[i] = (max[i] - min[i]) / size[i];
+            logicSize *= size[i];
+        }
+
+        if(bufferSize < logicSize){
+            assert(0);
+        }
+        
     }
 
     __host__ void copyHistogramAsync(cudaStream_t stream = 0){
@@ -95,6 +120,18 @@ public:
         for(int i=0; i<dim; i++){
             size[i] = this->size[i];
         }
+    }
+
+    __host__ U getMin(int index){
+        return min[index];
+    }
+
+    __host__ U getMax(int index){
+        return max[index];
+    }
+
+    __host__ U getResolution(int index){
+        return resolution[index];
     }
     
     __device__ void addData(const U* data, const int count = 1){
@@ -128,6 +165,10 @@ private:
 
 public:
 
+    __host__ void resetBufferAsync(cudaStream_t stream = 0){
+        cudaErrChk(cudaMemsetAsync(cudaPtr, 0, bufferSize * sizeof(T), stream));
+    }
+
     __host__ ~histogramCUDA(){
         cudaErrChk(cudaFreeHost(hostPtr));
         cudaErrChk(cudaFree(cudaPtr));
@@ -144,30 +185,11 @@ using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, int>;
 
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
 
-__global__ void velocityHistogramKernel(velocitySoA* pclArray, velocityHistogramCUDA* histogramCUDAPtrUV, 
-                                                        velocityHistogramCUDA* histogramCUDAPtrVW, 
-                                                        velocityHistogramCUDA* histogramCUDAPtrUW);
+__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
+                                        velocityHistogramCUDA* histogramCUDAPtrUV, 
+                                        velocityHistogramCUDA* histogramCUDAPtrVW, 
+                                        velocityHistogramCUDA* histogramCUDAPtrUW);
 
-struct getU {
-    __host__ __device__
-    cudaCommonType operator()(const SpeciesParticle& pcl) const {
-        return pcl.get_u();
-    }
-};
-
-struct getV {
-    __host__ __device__
-    cudaCommonType operator()(const SpeciesParticle& pcl) const {
-        return pcl.get_v();
-    }
-};
-
-struct getW {
-    __host__ __device__
-    cudaCommonType operator()(const SpeciesParticle& pcl) const {
-        return pcl.get_w();
-    }
-};
 
 /**
  * @brief Histogram for one species
@@ -180,12 +202,12 @@ private:
 
     velocityHistogramCUDA* histogramCUDAPtr[3];
 
-    cudaCommonType min[3], max[3], resolution[3];
+    int binThisDim[2] = {100, 100};
 
-    // UV, VW, UW
-    cudaCommonType minArray[3][2];
-    cudaCommonType maxArray[3][2];
-    cudaCommonType resolutionArray[3][2];
+    int reductionTempArraySize = 0;
+    cudaCommonType* reductionTempArrayCUDA;
+    cudaCommonType* reductionMinResultCUDA;
+    cudaCommonType* reductionMaxResultCUDA;
 
     int cycleNum;
 
@@ -193,24 +215,41 @@ private:
 
     bool bigEndian;
 
+    int reduceBlockNum(int dataSize, int blockSize){
+        if(dataSize < 4096)dataSize = 4096;
+        auto blockNum = getGridSize(dataSize / 4096, blockSize); // 4096 elements per thread
+        blockNum = blockNum > 1024 ? 1024 : blockNum;
+
+        if(reductionTempArraySize < blockNum){
+            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(cudaCommonType)*blockNum * 6));
+            reductionTempArraySize = blockNum;
+        }
+
+        return blockNum;
+    }
+
 
     /**
      * @brief get the Max and Min value of the given value set
      */
     __host__ int getRange(velocitySoA* pclArray, cudaStream_t stream);
 
-    /**
-     * @brief update the histogram range and resolution, reset the buffer
-     */
-    __host__ int prepareHistogram(){
+    // /**
+    //  * @brief update the histogram range and resolution, reset the buffer
+    //  */
+    // __host__ int prepareHistogram(){
         
-        for(int i=0; i<3; i++){
-            histogramHostPtr[i]->setHistogram(minArray[i], maxArray[i], resolutionArray[i]);
-            // copy the histogram object to GPU
-            cudaErrChk(cudaMemcpy(histogramCUDAPtr[i], histogramHostPtr[i], sizeof(velocityHistogramCUDA), cudaMemcpyHostToDevice));
-        }
-        return 0;
-    }
+    //     for(int i=0; i<3; i++){
+    //         // launch the init kernel 
+
+
+    //         histogramHostPtr[i]->setHistogram(minArray[i], maxArray[i], binThisDim);
+    //         // copy the histogram object to GPU
+    //         cudaErrChk(cudaMemcpy(histogramCUDAPtr[i], histogramHostPtr[i], sizeof(velocityHistogramCUDA), cudaMemcpyHostToDevice));
+    //     }
+    //     return 0;
+    // }
 public:
 
     /**
@@ -218,6 +257,13 @@ public:
      * @param path the path to store the output file, directory
      */
     __host__ velocityHistogram(int initSize, std::string path): filePath(path){
+
+        reductionTempArraySize = 1024;
+        cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(cudaCommonType)*reductionTempArraySize * 6));
+
+        cudaErrChk(cudaMalloc(&reductionMinResultCUDA, sizeof(cudaCommonType)*6));
+        reductionMaxResultCUDA = reductionMinResultCUDA + 3;
+
         for(int i=0; i<3; i++){
             histogramHostPtr[i] = newHostPinnedObject<velocityHistogramCUDA>(initSize);
             cudaErrChk(cudaMalloc((void**)&histogramCUDAPtr[i], sizeof(velocityHistogramCUDA)));
@@ -248,8 +294,12 @@ public:
      */
     __host__ void collect(cudaStream_t stream = 0){
         cudaErrChk(cudaStreamSynchronize(stream));
-        // now, all the 3 histograms data are in host buffers
         
+        for(int i=0; i<3; i++){
+            histogramHostPtr[i]->copyHistogramAsync(stream);
+        }
+
+        cudaErrChk(cudaStreamSynchronize(stream));
         
         std::string items[3] = {"UV", "VW", "UW"};
 
@@ -264,8 +314,8 @@ public:
             vtkFile << "BINARY\n";  
             vtkFile << "DATASET STRUCTURED_POINTS\n";
             vtkFile << "DIMENSIONS " << histogramHostPtr[i]->size[0] << " " << histogramHostPtr[i]->size[1] << " 1\n";
-            vtkFile << "ORIGIN " << minArray[i][0] << " " << minArray[i][1] << " 0\n"; 
-            vtkFile << "SPACING " << resolutionArray[i][0] << " " << resolutionArray[i][1] << " 1\n";  
+            vtkFile << "ORIGIN " << histogramHostPtr[i]->getMin(0) << " " << histogramHostPtr[i]->getMin(1) << " 0\n"; 
+            vtkFile << "SPACING " << histogramHostPtr[i]->getResolution(0) << " " << histogramHostPtr[i]->getResolution(1) << " 1\n";  
             vtkFile << "POINT_DATA " << histogramHostPtr[i]->getLogicSize() << "\n";  
             vtkFile << "SCALARS scalars int 1\n";  
             vtkFile << "LOOKUP_TABLE default\n";  
@@ -286,6 +336,10 @@ public:
     }
 
     ~velocityHistogram(){
+
+        cudaErrChk(cudaFree(reductionTempArrayCUDA));
+        cudaErrChk(cudaFree(reductionMinResultCUDA));
+
         for(int i=0; i<3; i++){
             deleteHostPinnedObject(histogramHostPtr[i]);
             cudaErrChk(cudaFree(histogramCUDAPtr[i]));

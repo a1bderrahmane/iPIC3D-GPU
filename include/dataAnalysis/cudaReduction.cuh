@@ -8,7 +8,8 @@
 
 namespace cudaReduction
 {
-    
+
+// ********************* max reduction *********************
 
 template <typename T, unsigned int blockSize>
 __device__ void warpReduceMax(volatile T* sdata, unsigned int tid) {
@@ -92,6 +93,72 @@ __global__ void reduceMaxWarp(T* g_idata, T* g_odata, unsigned int n) {
 }
 
 
+// ********************* min reduction *********************
+
+template <typename T, unsigned int blockSize>
+__device__ void warpReduceMin(volatile T* sdata, unsigned int tid) {
+    if (blockSize >= 64) sdata[tid] = min(sdata[tid], sdata[tid + 32]);
+    if (blockSize >= 32) sdata[tid] = min(sdata[tid], sdata[tid + 16]);
+    if (blockSize >= 16) sdata[tid] = min(sdata[tid], sdata[tid + 8]);
+    if (blockSize >= 8) sdata[tid] = min(sdata[tid], sdata[tid + 4]);
+    if (blockSize >= 4) sdata[tid] = min(sdata[tid], sdata[tid + 2]);
+    if (blockSize >= 2) sdata[tid] = min(sdata[tid], sdata[tid + 1]);
+}
+
+template <typename T, unsigned int blockSize>
+__global__ void reduceMin(T* g_idata, T* g_odata, unsigned int n) {
+    extern __shared__ T sdata[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x * (blockSize * 2) + tid;
+    unsigned int gridSize = blockSize * 2 * gridDim.x;
+
+    sdata[tid] = g_idata[i];
+
+    while (i < n) {
+        sdata[tid] = min(sdata[tid], g_idata[i]);
+        if (i + blockSize < n)
+            sdata[tid] = min(sdata[tid], g_idata[i + blockSize]);
+        i += gridSize;
+    }
+
+    __syncthreads();
+
+    if (blockSize >= 512) { if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
+    if (blockSize >= 256) { if (tid < 128) { sdata[tid] = min(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
+    if (blockSize >= 128) { if (tid < 64) { sdata[tid] = min(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
+    if (tid < 32) warpReduceMin<T, blockSize>(sdata, tid);
+
+    if (tid == 0) g_odata[blockIdx.x] = sdata[0];
+}
+
+template <typename T>
+__global__ void reduceMinWarp(T* g_idata, T* g_odata, unsigned int n) {
+
+    assert(blockDim.x == 32);
+    assert(gridDim.x == 1);
+
+    unsigned int tid = threadIdx.x;
+
+    T minValue; // the local variable of the thread
+    if (tid < n) minValue = g_idata[tid];
+    else minValue = g_idata[0];
+
+    for(int i = tid + 32; i < n; i += 32){
+        minValue = min(minValue, g_idata[i]);
+    }
+
+    constexpr unsigned int fullMask = 0xffffffff;
+    // warp reduction
+    for(int offset = 16; offset > 0; offset /= 2){
+        const T tempValue = __shfl_down_sync(fullMask, minValue, offset);
+        minValue = min(minValue, tempValue);
+    }
+
+    if(tid == 0) g_odata[0] = minValue;
+}
+
+
+// ********************* sum reduction *********************
 
 
 template <typename T, unsigned int blockSize>
@@ -173,6 +240,7 @@ __global__ void reduceSumWarp(T* g_idata, T* g_odata, unsigned int n) {
 }
 
 
+// ********************* pre and post process reduction *********************
 
 
 enum class PreProcessType

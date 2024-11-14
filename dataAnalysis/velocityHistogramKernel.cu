@@ -17,16 +17,15 @@ using namespace particleArraySoA;
  * @param histogramCUDAPtrVW the histogram for VW
  * @param histogramCUDAPtrUW the histogram for UW
  */
-__global__ void velocityHistogramKernel(velocitySoA* pclArraySoA, velocityHistogramCUDA* histogramCUDAPtrUV, 
-                                                    velocityHistogramCUDA* histogramCUDAPtrVW, 
-                                                    velocityHistogramCUDA* histogramCUDAPtrUW){
+__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
+                                        velocityHistogramCUDA* histogramCUDAPtrUV, 
+                                        velocityHistogramCUDA* histogramCUDAPtrVW, 
+                                        velocityHistogramCUDA* histogramCUDAPtrUW){
 
     int pidx = threadIdx.x + blockIdx.x * blockDim.x;
-    if(pidx >= pclArraySoA->getNOP())return;
+    if(pidx >= nop)return;
 
-    const cudaCommonType uvw[3] = {pclArraySoA->getElement(particleArraySoA::particleArraySoAElement::U)[pidx], 
-                                    pclArraySoA->getElement(particleArraySoA::particleArraySoAElement::V)[pidx], 
-                                    pclArraySoA->getElement(particleArraySoA::particleArraySoAElement::W)[pidx]};
+    const cudaCommonType uvw[3] = {u[pidx], v[pidx], w[pidx]};
     const cudaCommonType uv[2] = {uvw[0], uvw[1]};
     const cudaCommonType vw[2] = {uvw[1], uvw[2]};
     const cudaCommonType uw[2] = {uvw[0], uvw[2]};
