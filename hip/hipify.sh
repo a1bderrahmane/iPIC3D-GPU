@@ -4,9 +4,9 @@ projectRoot="../"
 
 # Define a mapping for input and output
 declare -A fileMap=(
-    ["${projectRoot}/cudaKernel"]="./hipKernel"
+    ["${projectRoot}/cudaKernel"]="./hipKernel/"
     ["${projectRoot}/include/CUDA/"]="./include/"
-    ["${projectRoot}/main/iPIC3Dlib.cu"]="./main/"
+    ["${projectRoot}/main/iPIC3Dlib.cu"]="./main/iPIC3Dlib.cpp"
 )
 
 hipifyScript="./hipify-perl"
@@ -56,5 +56,9 @@ for inputPath in "${!fileMap[@]}"; do
         echo "Input path $inputPath does not exist, skipping..."
     fi
 done
+
+echo "Hipify-Perl done, post process start..."
+
+./hipify-postProcess.sh
 
 echo "Conversion completed."
