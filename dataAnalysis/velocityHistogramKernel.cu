@@ -18,9 +18,7 @@ using namespace particleArraySoA;
  * @param histogramCUDAPtrUW the histogram for UW
  */
 __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
-                                        velocityHistogramCUDA* histogramCUDAPtrUV, 
-                                        velocityHistogramCUDA* histogramCUDAPtrVW, 
-                                        velocityHistogramCUDA* histogramCUDAPtrUW){
+                                        velocityHistogramCUDA* histogramCUDAPtr){
 
     int pidx = threadIdx.x + blockIdx.x * blockDim.x;
     if(pidx >= nop)return;
@@ -30,9 +28,9 @@ __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonTy
     const cudaCommonType vw[2] = {uvw[1], uvw[2]};
     const cudaCommonType uw[2] = {uvw[0], uvw[2]};
 
-    histogramCUDAPtrUV->addData(uv, 1);
-    histogramCUDAPtrVW->addData(vw, 1);
-    histogramCUDAPtrUW->addData(uw, 1);
+    histogramCUDAPtr[0].addData(uv, 1);
+    histogramCUDAPtr[1].addData(vw, 1);
+    histogramCUDAPtr[2].addData(uw, 1);
 
 
 }

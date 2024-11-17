@@ -185,11 +185,6 @@ using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, int>;
 
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
 
-__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
-                                        velocityHistogramCUDA* histogramCUDAPtrUV, 
-                                        velocityHistogramCUDA* histogramCUDAPtrVW, 
-                                        velocityHistogramCUDA* histogramCUDAPtrUW);
-
 
 /**
  * @brief Histogram for one species
@@ -198,9 +193,9 @@ class velocityHistogram
 {
 private:
     // UVW
-    velocityHistogramCUDA* histogramHostPtr[3];
+    velocityHistogramCUDA* histogramHostPtr;
 
-    velocityHistogramCUDA* histogramCUDAPtr[3];
+    velocityHistogramCUDA* histogramCUDAPtr; // one buffer for 3 objects
 
     int binThisDim[2] = {100, 100};
 
@@ -235,21 +230,6 @@ private:
      */
     __host__ int getRange(velocitySoA* pclArray, cudaStream_t stream);
 
-    // /**
-    //  * @brief update the histogram range and resolution, reset the buffer
-    //  */
-    // __host__ int prepareHistogram(){
-        
-    //     for(int i=0; i<3; i++){
-    //         // launch the init kernel 
-
-
-    //         histogramHostPtr[i]->setHistogram(minArray[i], maxArray[i], binThisDim);
-    //         // copy the histogram object to GPU
-    //         cudaErrChk(cudaMemcpy(histogramCUDAPtr[i], histogramHostPtr[i], sizeof(velocityHistogramCUDA), cudaMemcpyHostToDevice));
-    //     }
-    //     return 0;
-    // }
 public:
 
     /**
@@ -264,11 +244,10 @@ public:
         cudaErrChk(cudaMalloc(&reductionMinResultCUDA, sizeof(cudaCommonType)*6));
         reductionMaxResultCUDA = reductionMinResultCUDA + 3;
 
-        for(int i=0; i<3; i++){
-            histogramHostPtr[i] = newHostPinnedObject<velocityHistogramCUDA>(initSize);
-            cudaErrChk(cudaMalloc((void**)&histogramCUDAPtr[i], sizeof(velocityHistogramCUDA)));
-        }
-
+        histogramHostPtr = newHostPinnedObjectArray<velocityHistogramCUDA>(3, initSize);
+        cudaErrChk(cudaMalloc(&histogramCUDAPtr, sizeof(velocityHistogramCUDA) * 3));
+        cudaErrChk(cudaMemcpy(histogramCUDAPtr, histogramHostPtr, sizeof(velocityHistogramCUDA) * 3, cudaMemcpyDefault));
+        
         { // check the endian
             int test = 1;
             char* ptr = reinterpret_cast<char*>(&test);
@@ -296,7 +275,7 @@ public:
         cudaErrChk(cudaStreamSynchronize(stream));
         
         for(int i=0; i<3; i++){
-            histogramHostPtr[i]->copyHistogramAsync(stream);
+            histogramHostPtr[i].copyHistogramAsync(stream);
         }
 
         cudaErrChk(cudaStreamSynchronize(stream));
@@ -313,15 +292,15 @@ public:
             vtkFile << "Velocity Histogram\n";
             vtkFile << "BINARY\n";  
             vtkFile << "DATASET STRUCTURED_POINTS\n";
-            vtkFile << "DIMENSIONS " << histogramHostPtr[i]->size[0] << " " << histogramHostPtr[i]->size[1] << " 1\n";
-            vtkFile << "ORIGIN " << histogramHostPtr[i]->getMin(0) << " " << histogramHostPtr[i]->getMin(1) << " 0\n"; 
-            vtkFile << "SPACING " << histogramHostPtr[i]->getResolution(0) << " " << histogramHostPtr[i]->getResolution(1) << " 1\n";  
-            vtkFile << "POINT_DATA " << histogramHostPtr[i]->getLogicSize() << "\n";  
+            vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
+            vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
+            vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";  
+            vtkFile << "POINT_DATA " << histogramHostPtr[i].getLogicSize() << "\n";  
             vtkFile << "SCALARS scalars int 1\n";  
             vtkFile << "LOOKUP_TABLE default\n";  
 
-            auto histogramBuffer = histogramHostPtr[i]->getHistogram();
-            for (int j = 0; j < histogramHostPtr[i]->getLogicSize(); j++) {
+            auto histogramBuffer = histogramHostPtr[i].getHistogram();
+            for (int j = 0; j < histogramHostPtr[i].getLogicSize(); j++) {
                 int value = histogramBuffer[j];
                 
                 value = __builtin_bswap32(value);
@@ -340,10 +319,8 @@ public:
         cudaErrChk(cudaFree(reductionTempArrayCUDA));
         cudaErrChk(cudaFree(reductionMinResultCUDA));
 
-        for(int i=0; i<3; i++){
-            deleteHostPinnedObject(histogramHostPtr[i]);
-            cudaErrChk(cudaFree(histogramCUDAPtr[i]));
-        }
+        cudaErrChk(cudaFree(histogramCUDAPtr));
+        deleteHostPinnedObjectArray(histogramHostPtr, 3);
     }
 };
 

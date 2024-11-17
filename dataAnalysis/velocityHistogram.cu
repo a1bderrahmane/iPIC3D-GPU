@@ -17,21 +17,20 @@ __global__ void histogramUpdateKernel(cudaCommonType* minUVW, cudaCommonType* ma
     cudaCommonType max[2];
     int binDim[2] = {binDim0, binDim1};
 
-    if(idx == 0){
+    if(idx == 0){ // UV
         min[0] = minUVW[0];
         min[1] = minUVW[1];
         max[0] = maxUVW[0];
         max[1] = maxUVW[1];
-    }else if(idx == 1){
-        min[0] = minUVW[0];
-        min[1] = minUVW[2];
-        max[0] = maxUVW[0];
-        max[1] = maxUVW[2];
-        
-    }else{
+    }else if(idx == 1){ // VW
         min[0] = minUVW[1];
         min[1] = minUVW[2];
         max[0] = maxUVW[1];
+        max[1] = maxUVW[2];
+    }else{ // UW
+        min[0] = minUVW[0];
+        min[1] = minUVW[2];
+        max[0] = maxUVW[0];
         max[1] = maxUVW[2];
     }
 
@@ -42,28 +41,27 @@ __global__ void histogramUpdateKernel(cudaCommonType* minUVW, cudaCommonType* ma
 }
 
 
+__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
+                                        velocityHistogramCUDA* histogramCUDAPtr);
+
 
 __host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, cudaStream_t stream){
     using namespace particleArraySoA;
-    
     // reset the histogram buffer, assuming enough size
     for(int i=0; i<3; i++){
-        histogramHostPtr[i]->resetBufferAsync(stream);   
+        histogramHostPtr[i].resetBufferAsync(stream);   
     }
     getRange(pclArray, stream);
     
     histogramUpdateKernel<<<1, 3, 0, stream>>>(reductionMinResultCUDA, reductionMaxResultCUDA, 
                                                 binThisDim[0], binThisDim[1], 
-                                                histogramCUDAPtr[0]);
+                                                histogramCUDAPtr);
 
     velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP(), 256), 256, 0, stream>>>
         (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(W),
-        histogramCUDAPtr[0], histogramCUDAPtr[1], histogramCUDAPtr[2]);
+        histogramCUDAPtr);
     // copy the histogram object to host
-    for(int i=0; i<3; i++){
-        cudaErrChk(cudaMemcpyAsync(histogramHostPtr[i], histogramCUDAPtr[i], 
-                                    sizeof(velocityHistogramCUDA), cudaMemcpyDeviceToHost, stream));
-    }
+    cudaErrChk(cudaMemcpyAsync(histogramHostPtr, histogramCUDAPtr, 3 * sizeof(velocityHistogramCUDA), cudaMemcpyDefault, stream));
 
     this->cycleNum = cycleNum;
 }
