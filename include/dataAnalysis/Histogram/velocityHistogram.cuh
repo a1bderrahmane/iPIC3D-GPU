@@ -22,6 +22,8 @@ private:
     T* hostPtr;
     T* cudaPtr;
 
+    U* scaleMark[dim];
+
     int bufferSize; // the physical size of current buffer, in elements
 public:
     int size[dim];  // the logic size of each dimension, in elements
@@ -37,7 +39,6 @@ public:
      */
     __host__ histogramCUDA(int bufferSize): bufferSize(bufferSize){
         allocate();
-        resetBuffer();
     }
 
     /**
@@ -72,7 +73,6 @@ public:
             allocate();
         }
         
-        resetBuffer();
     }
 
     __device__ void setHistogramDevice(U* min, U* max, int* binThisDim){
@@ -108,8 +108,12 @@ public:
         return hostPtr;
     }
 
-    __host__ T* getHistogramCUDA(){
+    __host__ __device__ T* getHistogramCUDA(){
         return cudaPtr;
+    }
+
+    __host__ U** getScaleMarkCUDAPtrs(){
+        return scaleMark;
     }
 
     __host__ __device__ int getLogicSize(){
@@ -134,7 +138,7 @@ public:
         return resolution[index];
     }
     
-    __device__ void addData(const U* data, const int count = 1){
+    __device__ void addData(const U* data, const T count = 1){
         int index = 0;
         
         for(int i=dim-1; i>=0; i--){
@@ -155,34 +159,34 @@ public:
      * @brief get the center of the bin
      * @param index the index of the bin, in the buffer
      */
-    __device__ void centerOfBin(int index, U* center){
+    __device__ void centerOfBin(int index){
         int tmp = index;
         for(int i=0; i<dim; i++){
-            center[i] = min[i] + (tmp % size[i] + 0.5) * resolution[i];
+            scaleMark[i][index] = min[i] + (tmp % size[i] + 0.5) * resolution[i];
             tmp /= size[i];
         }
     }
 private:
 
     __host__ void allocate(){
-
         cudaErrChk(cudaMallocHost((void**)&hostPtr, bufferSize * sizeof(T)));
         cudaErrChk(cudaMalloc((void**)&cudaPtr, bufferSize * sizeof(T)));
+
+        for(int i=0; i<dim; i++){
+            cudaErrChk(cudaMalloc((void**)&scaleMark[i], bufferSize * sizeof(U)));
+        }
     }
 
-    __host__ void resetBuffer(){
-        cudaErrChk(cudaMemset(cudaPtr, 0, bufferSize * sizeof(T)));
-    }
 
 public:
-
-    __host__ void resetBufferAsync(cudaStream_t stream = 0){
-        cudaErrChk(cudaMemsetAsync(cudaPtr, 0, bufferSize * sizeof(T), stream));
-    }
 
     __host__ ~histogramCUDA(){
         cudaErrChk(cudaFreeHost(hostPtr));
         cudaErrChk(cudaFree(cudaPtr));
+
+        for(int i=0; i<dim; i++){
+            cudaErrChk(cudaFree(scaleMark[i]));
+        }
     }
 
 };
@@ -192,11 +196,9 @@ public:
 
 namespace velocityHistogram{
 
-using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, int>;
+using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, cudaCommonType>;
 
-using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
-
-__global__ void scaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr, cudaCommonType* dim0, cudaCommonType* dim1);
+using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
 
 
 /**
@@ -326,15 +328,55 @@ public:
 
     }
 
-    __host__ velocityHistogramCUDA* getVelocityHistogramResult(cudaStream_t stream = 0){
+    __host__ void writeToFileDouble(std::string filePath, cudaStream_t stream = 0){
         cudaErrChk(cudaStreamSynchronize(stream));
-        // now the histogram results on the device buffer
+        
+        for(int i=0; i<3; i++){
+            histogramHostPtr[i].copyHistogramAsync(stream);
+        }
 
-        return histogramHostPtr;
+        cudaErrChk(cudaStreamSynchronize(stream));
+        
+        std::string items[3] = {"UV", "VW", "UW"};
+
+        for(int i=0; i<3; i++){ // UV, VW, UW
+            std::ostringstream ossFileName;
+            ossFileName << filePath << "/velocityHistogram_" << MPIdata::get_rank() << "_" << items[i] << "_" << cycleNum << ".vtk";
+
+            std::ofstream vtkFile(ossFileName.str(), std::ios::binary);
+
+            vtkFile << "# vtk DataFile Version 3.0\n";
+            vtkFile << "Velocity Histogram\n";
+            vtkFile << "BINARY\n";  
+            vtkFile << "DATASET STRUCTURED_POINTS\n";
+            vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
+            vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
+            vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";  
+            vtkFile << "POINT_DATA " << histogramHostPtr[i].getLogicSize() << "\n";  
+            vtkFile << "SCALARS scalars double 1\n";  
+            vtkFile << "LOOKUP_TABLE default\n";  
+
+            auto histogramBuffer = histogramHostPtr[i].getHistogram();
+            for (int j = 0; j < histogramHostPtr[i].getLogicSize(); j++) {
+                cudaCommonType value = histogramBuffer[j];
+                
+                // *(uint64_t*)(&value) = __builtin_bswap64(*(uint64_t*)(&value));
+
+                vtkFile.write(reinterpret_cast<char*>(&value), sizeof(cudaCommonType));
+            }
+
+            vtkFile.close();
+        }
+
+
     }
 
-    __host__ void computeScaleMark(int i, cudaCommonType* scaleMark0, cudaCommonType* scaleMark1, cudaStream_t stream = 0){
-        scaleMarkKernel<<<getGridSize(histogramHostPtr[i].getLogicSize(), 256), 256, 0, stream>>>(histogramCUDAPtr + i, scaleMark0, scaleMark1);
+    __host__ cudaCommonType* getVelocityHistogramCUDAArray(const int i){
+        return histogramHostPtr[i].getHistogramCUDA();
+    }
+
+    __host__ cudaCommonType** getHistogramScaleMark(const int i){
+        return histogramHostPtr[i].getScaleMarkCUDAPtrs();
     }
 
     ~velocityHistogram(){

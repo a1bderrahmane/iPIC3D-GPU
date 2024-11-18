@@ -244,10 +244,11 @@ __global__ void reduceSumWarp(T* g_idata, T* g_odata, unsigned int n) {
 
 
 enum class PreProcessType
-{
+{   
+    none,
     minusConstThenEXP,
     multiply,
-    multiplyEXP
+    multiplyEXP,
 };
 
 enum class PostProcessType
@@ -268,6 +269,8 @@ __device__ __inline__ T preProcess(T value, U* preProcOprand, int eid) {
         return value * preProcOprand[eid];
     } else if constexpr (preProc == PreProcessType::multiplyEXP) {
         return value * exp(preProcOprand[eid]);
+    } else {
+        return value;
     }
 }
 
@@ -282,9 +285,11 @@ __device__ __inline__ T postProcess(T value, U* postProcOprand) {
     }
 }
 
-
-template <typename T, unsigned int blockSize, PreProcessType preProc, typename U>
-__global__ void reduceSumPreProcess(T* g_idata, T* g_odata, unsigned int n, U* preProcOprand) {
+/**
+ * @brief with preprocess and weight
+ */
+template <typename T, unsigned int blockSize, PreProcessType preProc, typename U, typename V = int, bool ifWeight = false>
+__global__ void reduceSumPreProcess(T* g_idata, T* g_odata, unsigned int n, U* preProcOprand, V* weight = nullptr) {
     extern __shared__ T sdata[];
     unsigned int tid = threadIdx.x;
     unsigned int i = blockIdx.x * (blockSize * 2) + tid;
@@ -293,9 +298,15 @@ __global__ void reduceSumPreProcess(T* g_idata, T* g_odata, unsigned int n, U* p
     sdata[tid] = 0;
 
     while (i < n) {
-        sdata[tid] += preProcess<T, preProc, U>(g_idata[i], preProcOprand, i);
-        if (i + blockSize < n)
-            sdata[tid] += preProcess<T, preProc, U>(g_idata[i + blockSize], preProcOprand, i + blockSize);
+        if constexpr (ifWeight) { // weighted
+            sdata[tid] += preProcess<T, preProc, U>(g_idata[i], preProcOprand, i) * weight[i];
+            if (i + blockSize < n)
+                sdata[tid] += preProcess<T, preProc, U>(g_idata[i + blockSize], preProcOprand, i + blockSize) * weight[i + blockSize];
+        } else { // not weighted
+            sdata[tid] += preProcess<T, preProc, U>(g_idata[i], preProcOprand, i);
+            if (i + blockSize < n)
+                sdata[tid] += preProcess<T, preProc, U>(g_idata[i + blockSize], preProcOprand, i + blockSize);
+        }
         i += gridSize;
     }
 

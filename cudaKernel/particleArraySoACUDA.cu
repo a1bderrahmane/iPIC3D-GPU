@@ -37,6 +37,7 @@ __host__ particleArraySoACUDA<T, startElement, stopElement>::particleArraySoACUD
 
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType>;
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
+template class particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
                             
 } // namespace particleArraySoA
 

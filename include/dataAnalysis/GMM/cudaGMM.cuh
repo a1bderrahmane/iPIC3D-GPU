@@ -11,33 +11,35 @@
 #include <iostream>
 
 
-namespace cudaGMM
+namespace cudaGMMWeight
 {
 
-template <typename T, int dataDim>
+template <typename T, int dataDim, typename U = int>
 class GMMDataMultiDim{
 
 private:
     int dim = dataDim;
     int numData;
     T* data[dataDim]; // pointers to the dimensions of the data points
-
+    U* weight;
 public:
 
     // all dim in one array
-    __host__ __device__ GMMDataMultiDim(int numData, T* data){ 
+    __host__ __device__ GMMDataMultiDim(int numData, T* data, U* weight){ 
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data + i*numData;
         }
+        this->weight = weight;
     }
 
     // all dim in separate arrays
-    __host__ __device__ GMMDataMultiDim(int numData, T** data){
+    __host__ __device__ GMMDataMultiDim(int numData, T** data, U* weight){
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data[i];
         }
+        this->weight = weight;
     }
 
     __device__ __host__ T* getDim(int dim)const {
@@ -50,6 +52,10 @@ public:
 
     __device__ __host__ int getDim()const {
         return dim;
+    }
+
+    __device__ __host__ U* getWeight()const {
+        return weight;
     }
 
 };
@@ -71,14 +77,14 @@ template <typename T>
 using GMMParam_t = GMMParam_s<T>;
 
 
-template <typename T, int dataDim>
+template <typename T, int dataDim, typename U = int>
 class GMM{
 
 private:
     cudaStream_t GMMStream;
 
-    GMMDataMultiDim<T, dataDim>* dataHostPtr; // ogject on host, data pointers pointing to the data on device
-    GMMDataMultiDim<T, dataDim>* dataDevicePtr = nullptr; // object on device, data pointers pointing to the data on device
+    GMMDataMultiDim<T, dataDim, U>* dataHostPtr; // ogject on host, data pointers pointing to the data on device
+    GMMDataMultiDim<T, dataDim, U>* dataDevicePtr = nullptr; // object on device, data pointers pointing to the data on device
 
     GMMParam_t<T>* paramHostPtr; // object on host, the parameters for the GMM
     // GMMParam_t<T>* paramDevicePtr; // object on device, the parameters for the GMM
@@ -118,7 +124,7 @@ private:
 public:
 
     //allocate or check if the arrays are allocated adequately, then replace the param
-    __host__ int config(GMMParam_t<T>* GMMParam, GMMDataMultiDim<T, dataDim>* data){
+    __host__ int config(GMMParam_t<T>* GMMParam, GMMDataMultiDim<T, dataDim, U>* data){
         // check if the arrays are allocated adequately
         if(GMMParam->numComponents > sizeNumComponents){
             // deallocate the old arrays
@@ -276,6 +282,7 @@ public:
 
             file << "{\n";
             file << "\"convergeStep\": " << convergeStep << ",\n";
+            file << "\"logLikelyHood\": " << logLikelihood << ",\n";
             file << "\"model\": {\n";
             file << "\"dataDim\": " << dataDim << ",\n";
             file << "\"numComponent\": " << numComponents << ",\n";
@@ -367,7 +374,7 @@ private:
     void calcPxAtMeanAndCoVariance(){
 
         // launch kernel
-        cudaGMMKernel::calcLogLikelihoodForPointsKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        cudaGMMWeightKernel::calcLogLikelihoodForPointsKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr, meanCUDA, coVarianceDecomposedCUDA, posteriorCUDA, paramHostPtr->numComponents);
         
         // posterior_nk holds log p(x_i|mean,coVariance) for each data point i and each component k, temporary storage
@@ -380,7 +387,7 @@ private:
 
     void calcLogLikelihoodPxAndposterior(){
         // launch kernel, the first posterior_nk is the log p(x_i|mean,coVariance)
-        cudaGMMKernel::calcLogLikelihoodPxAndposteriorKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        cudaGMMWeightKernel::calcLogLikelihoodPxAndposteriorKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr, weightCUDA, posteriorCUDA, tempArrayCUDA, posteriorCUDA, paramHostPtr->numComponents);
         
         // now the posterior_nk is the log posterior_nk
@@ -393,7 +400,9 @@ private:
         constexpr int blockSize = 256;
         auto blockNum = reduceBlockNum(dataHostPtr->getNumData(), blockSize);
 
-        cudaReduction::reduceSum<T, blockSize><<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>(tempArrayCUDA, reductionTempArrayCUDA, dataHostPtr->getNumData());
+        cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::none, void, U, true> // weighted sum
+            <<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>
+            (tempArrayCUDA, reductionTempArrayCUDA, dataHostPtr->getNumData(), nullptr, dataHostPtr->getWeight());
         cudaReduction::reduceSumWarp<T><<<1, 32, 0, GMMStream>>>(reductionTempArrayCUDA, logLikelihoodCUDA, blockNum);
 
         static T* logResult = nullptr;
@@ -429,9 +438,9 @@ private:
                 (reductionTempArrayCUDA, maxValueArray + component, blockNum);
 
             // reduction sum with pre-process and post-process to get the log Posterior_k 
-            cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::minusConstThenEXP, T>
+            cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::minusConstThenEXP, T, U, true>
                 <<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>
-                (posteriorComponent, reductionTempArrayCUDA, dataHostPtr->getNumData(), maxValueArray + component);
+                (posteriorComponent, reductionTempArrayCUDA, dataHostPtr->getNumData(), maxValueArray + component, dataHostPtr->getWeight());
             
             cudaReduction::reduceSumWarpPostProcess<T, cudaReduction::PostProcessType::logAdd, T>
                 <<<1, 32, 0, GMMStream>>>
@@ -452,9 +461,9 @@ private:
             for(int dim = 0; dim < dataHostPtr->getDim(); dim++){
                 // calc x_i * posterior_nk, could be merged with the reduction sum
                 // sum the x_i * posterior_nk with reduction
-                cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::multiplyEXP, T>
+                cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::multiplyEXP, T, U, true>
                     <<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>
-                    (dataHostPtr->getDim(dim), reductionTempArrayCUDA, dataHostPtr->getNumData(), posteriorCUDA + component*dataHostPtr->getNumData());
+                    (dataHostPtr->getDim(dim), reductionTempArrayCUDA, dataHostPtr->getNumData(), posteriorCUDA + component*dataHostPtr->getNumData(), dataHostPtr->getWeight());
 
                 // divide by the Posterior_k, can be post processed with the reduction sum warp
                 cudaReduction::reduceSumWarpPostProcess<T, cudaReduction::PostProcessType::divideEXP, T>
@@ -467,7 +476,7 @@ private:
 
     void updateWeight(){
         // calc the new weight for components
-        cudaGMMKernel::updateWeightKernel
+        cudaGMMWeightKernel::updateWeightKernel
             <<<1, paramHostPtr->numComponents, paramHostPtr->numComponents * sizeof(T), GMMStream>>>
             (weightCUDA, PosteriorCUDA, paramHostPtr->numComponents);
     }
@@ -477,7 +486,7 @@ private:
         auto blockNum = reduceBlockNum(dataHostPtr->getNumData(), blockSize);
 
         // calc the new coVariance for components
-        cudaGMMKernel::updateCoVarianceKernel
+        cudaGMMWeightKernel::updateCoVarianceKernel
             <<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
             (dataDevicePtr, posteriorCUDA, PosteriorCUDA, meanCUDA, tempArrayCUDA, paramHostPtr->numComponents);
 
@@ -485,9 +494,9 @@ private:
         for(int component = 0; component < paramHostPtr->numComponents; component++){
             auto coVarianceComponent = tempArrayCUDA + component*dataHostPtr->getNumData()*dataDim*dataDim;
             for(int element = 0; element < dataDim * dataDim; element++){
-                cudaReduction::reduceSum<T, blockSize>
+                cudaReduction::reduceSumPreProcess<T, blockSize, cudaReduction::PreProcessType::none, void, U, true>
                     <<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>
-                    (coVarianceComponent + element*dataHostPtr->getNumData(), reductionTempArrayCUDA, dataHostPtr->getNumData());
+                    (coVarianceComponent + element*dataHostPtr->getNumData(), reductionTempArrayCUDA, dataHostPtr->getNumData(), nullptr, dataHostPtr->getWeight());
                     
                 cudaReduction::reduceSumWarpPostProcess<T, cudaReduction::PostProcessType::divideEXP, T>
                     <<<1, 32, 0, GMMStream>>>
@@ -496,7 +505,7 @@ private:
         }
 
         // decompose the coVariance
-        cudaGMMKernel::decomposeCoVarianceKernel<T, dataDim>
+        cudaGMMWeightKernel::decomposeCoVarianceKernel<T, dataDim>
             <<<1, paramHostPtr->numComponents, 0, GMMStream>>>
             (coVarianceCUDA, coVarianceDecomposedCUDA, normalizerCUDA, paramHostPtr->numComponents);
     }

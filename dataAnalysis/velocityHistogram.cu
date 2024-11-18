@@ -41,24 +41,25 @@ __global__ void histogramUpdateKernel(cudaCommonType* minUVW, cudaCommonType* ma
 }
 
 
-__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
+__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w, cudaCommonType* q,
                                         velocityHistogramCUDA* histogramCUDAPtr);
+
+__global__ void resetBinScaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr);
 
 
 __host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, cudaStream_t stream){
     using namespace particleArraySoA;
-    // reset the histogram buffer, assuming enough size
-    for(int i=0; i<3; i++){
-        histogramHostPtr[i].resetBufferAsync(stream);   
-    }
-    getRange(pclArray, stream);
     
+    getRange(pclArray, stream);
     histogramUpdateKernel<<<1, 3, 0, stream>>>(reductionMinResultCUDA, reductionMaxResultCUDA, 
                                                 binThisDim[0], binThisDim[1], 
                                                 histogramCUDAPtr);
 
+    // reset the histogram buffer, set the scalMark
+    resetBinScaleMarkKernel<<<getGridSize(binThisDim[0] * binThisDim[1], 256), 256, 0, stream>>>(histogramCUDAPtr);
+
     velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP(), 256), 256, 0, stream>>>
-        (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(W),
+        (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(W), pclArray->getElement(Q),
         histogramCUDAPtr);
     // copy the histogram object to host
     cudaErrChk(cudaMemcpyAsync(histogramHostPtr, histogramCUDAPtr, 3 * sizeof(velocityHistogramCUDA), cudaMemcpyDefault, stream));

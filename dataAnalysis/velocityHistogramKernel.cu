@@ -36,19 +36,38 @@ __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonTy
 
 }
 
+__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w, cudaCommonType* q,
+                                        velocityHistogramCUDA* histogramCUDAPtr){
+
+    int pidx = threadIdx.x + blockIdx.x * blockDim.x;
+    if(pidx >= nop)return;
+
+    const cudaCommonType uvw[3] = {u[pidx], v[pidx], w[pidx]};
+    const cudaCommonType uv[2] = {uvw[0], uvw[1]};
+    const cudaCommonType vw[2] = {uvw[1], uvw[2]};
+    const cudaCommonType uw[2] = {uvw[0], uvw[2]};
+
+    const auto qAbs = abs(q[pidx] * 10e5);
+    //const int qAbs = 1;
+
+    histogramCUDAPtr[0].addData(uv, qAbs);
+    histogramCUDAPtr[1].addData(vw, qAbs);
+    histogramCUDAPtr[2].addData(uw, qAbs);
+
+}
+
 /**
- * @brief calculate the center of each histogram bin
- * @details this kernel is launched once for each histogram bin
+ * @brief reset and calculate the center of each histogram bin
+ * @details this kernel is launched once for each histogram bin for all 3 histograms
  */
-__global__ void scaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr, cudaCommonType* dim0, cudaCommonType* dim1){
+__global__ void resetBinScaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr){
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx >= histogramCUDAPtr->getLogicSize())return;
 
-    cudaCommonType center[2];
-    histogramCUDAPtr->centerOfBin(idx, center);
-
-    dim0[idx] = center[0];
-    dim1[idx] = center[1];
+    
+    histogramCUDAPtr[0].getHistogramCUDA()[idx] = 0.0; histogramCUDAPtr[0].centerOfBin(idx);
+    histogramCUDAPtr[1].getHistogramCUDA()[idx] = 0.0; histogramCUDAPtr[1].centerOfBin(idx);
+    histogramCUDAPtr[2].getHistogramCUDA()[idx] = 0.0; histogramCUDAPtr[2].centerOfBin(idx);
 
 }
 

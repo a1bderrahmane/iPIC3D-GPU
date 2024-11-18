@@ -3,13 +3,13 @@
 
 #include <assert.h>
 
-namespace cudaGMM
+namespace cudaGMMWeight
 {
-    template <typename T, int dataDim>
+    template <typename T, int dataDim, typename U>
     class GMMDataMultiDim;
 }
 
-namespace cudaGMMKernel
+namespace cudaGMMWeightKernel
 {
 
 
@@ -22,8 +22,8 @@ namespace cudaGMMKernel
  * @param logLikelihoodForPoints pointer to the logLikelihoodForPoints array, to store the log p(x_i|mean,coVariance) of each data point, used later, number of components * numData
  * @param numComponents number of components
  */
-template <typename T, int dataDim>
-__global__ void calcLogLikelihoodForPointsKernel(const cudaGMM::GMMDataMultiDim<T, dataDim>* dataCUDAPtr, const T* meanVector, const T* coVarianceDecomp, T* logLikelihoodForPoints, const int numComponents){
+template <typename T, int dataDim, typename U>
+__global__ void calcLogLikelihoodForPointsKernel(const cudaGMMWeight::GMMDataMultiDim<T, dataDim, U>* dataCUDAPtr, const T* meanVector, const T* coVarianceDecomp, T* logLikelihoodForPoints, const int numComponents){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     auto numData = dataCUDAPtr->getNumData();
     if(idx >= numData)return;
@@ -88,8 +88,8 @@ __global__ void calcLogLikelihoodForPointsKernel(const cudaGMM::GMMDataMultiDim<
  * @param logLikelihood pointer to the log likelihood(log p(x_i)) of the data points, to be summed up to get the total log likelihood(L or log p(x)), numData
  * @param posterior pointer to the posterior_nk(gamma) of the data points for all components, to be summed up to get the total Posterior(Gamma), number of components * numData
  */
-template <typename T, int dataDim>
-__global__ void calcLogLikelihoodPxAndposteriorKernel(const cudaGMM::GMMDataMultiDim<T, dataDim>* dataCUDAPtr, const T* logWeightVector, const T* logLikelihoodForPoints, 
+template <typename T, int dataDim, typename U>
+__global__ void calcLogLikelihoodPxAndposteriorKernel(const cudaGMMWeight::GMMDataMultiDim<T, dataDim, U>* dataCUDAPtr, const T* logWeightVector, const T* logLikelihoodForPoints, 
                                                         T* logLikelihood, T* posterior, const int numComponents){
     
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -153,8 +153,8 @@ __global__ void updateWeightKernel(T* logWeightVector, const T* logPosterior, co
  * @param meanVector pointer to the mean vector, number of components * dataDim, just updated
  * @param tempCoVarianceForDataPoints pointer to the coVariance matrix for each data point, number of components * dataNum * dataDim * dataDim
  */
-template <typename T, int dataDim>
-__global__ void updateCoVarianceKernel(const cudaGMM::GMMDataMultiDim<T, dataDim>* dataCUDAPtr, const T* logPosterior_nk, 
+template <typename T, int dataDim, typename U>
+__global__ void updateCoVarianceKernel(const cudaGMMWeight::GMMDataMultiDim<T, dataDim, U>* dataCUDAPtr, const T* logPosterior_nk, 
                                                                 const T* logPosterior_k, const T* meanVector, 
                                                                 T* tempCoVarianceForDataPoints, const int numComponents){
 

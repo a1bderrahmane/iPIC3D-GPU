@@ -16,7 +16,7 @@ namespace dataAnalysis
 
 using namespace iPic3D;
 
-using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
+using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
 
 
 /**
@@ -28,9 +28,10 @@ using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>
 int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, int cycle, std::string outputPath, int device){
 
     std::future<int> future[3];
+    // static cudaGMMWeight::GMM<cudaCommonType, 2, int> gmmArray[3];
 
     auto GMMLambda = [=](int i) mutable {
-        using namespace cudaGMM;
+        using namespace cudaGMMWeight;
 
         cudaErrChk(cudaSetDevice(device));
 
@@ -45,15 +46,15 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
             weightVector[j] = j == 0 ? 0.75 : 0.25;
             meanVector[j * 2] = 0.0;
             meanVector[j * 2 + 1] = 0.0;
-            coVarianceMatrix[j * 4] = 1.0;
+            coVarianceMatrix[j * 4] = 0.0001;
             coVarianceMatrix[j * 4 + 1] = 0.0;
             coVarianceMatrix[j * 4 + 2] = 0.0;
-            coVarianceMatrix[j * 4 + 3] = 1.0;
+            coVarianceMatrix[j * 4 + 3] = 0.0001;
         }
 
         GMMParam_t<cudaCommonType> GMMParam = {
             .numComponents = numComponent,
-            .maxIteration = 100,
+            .maxIteration = 50,
             .threshold = 1e-6,
 
             .weightInit = weightVector,
@@ -62,27 +63,18 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
         };
 
         // data
-        // generate scale mark data for histogram bins
-        const auto binNum = 10000;
-        cudaCommonType* scaleMark0; cudaErrChk(cudaMalloc(&scaleMark0, binNum * sizeof(cudaCommonType)));
-        cudaCommonType* scaleMark1; cudaErrChk(cudaMalloc(&scaleMark1, binNum * sizeof(cudaCommonType)));
-        velocityHistogram->computeScaleMark(i, scaleMark0, scaleMark1);
-        cudaCommonType* scaleMark[2] = {scaleMark0, scaleMark1};
-
-        GMMDataMultiDim<cudaCommonType, 2> GMMData(10000, scaleMark);
+        GMMDataMultiDim<cudaCommonType, 2, cudaCommonType> GMMData
+            (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
 
 
         // generate exact output file path
         std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
         auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
 
-        GMM<cudaCommonType, 2> gmm;
+        //auto& gmm = gmmArray[i];
+        cudaGMMWeight::GMM<cudaCommonType, 2, cudaCommonType> gmm;
         gmm.config(&GMMParam, &GMMData);
         auto ret =  gmm.initGMM(fileOutputPath); // the exact output file name
-
-        // free memory
-        cudaErrChk(cudaFree(scaleMark0));
-        cudaErrChk(cudaFree(scaleMark1));
 
         return ret;
     };
@@ -122,8 +114,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
         // histogram
         auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
-        velocityHistogram.writeToFile(histogramSpeciesOutputPath, KCode.streams[i]);
-        // auto histogramPtr = velocityHistogram.getVelocityHistogramResult(KCode.streams[i]);
+        velocityHistogram.writeToFileDouble(histogramSpeciesOutputPath, KCode.streams[i]);
 
         // GMM
         auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
