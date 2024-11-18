@@ -90,7 +90,7 @@ private:
     // GMMParam_t<T>* paramDevicePtr; // object on device, the parameters for the GMM
 
     int sizeNumComponents = 0; // the size of the buffers below, for space checking
-    int sizeNumData = 0; // the size of the buffers below, for space checking
+    int sizeNumData = 0; // the size of the buffers below, for space checking, numComponents * numData
 
     // the arrays on device
     T* weightCUDA;                  // numComponents, it will be log(weight) during the iteration
@@ -114,6 +114,8 @@ private:
     T* coVarianceDecomposed;    // numComponents * dataDim * dataDim, only the lower triangle
     T* normalizer;              // numComponents
 
+    T* logResult = nullptr;
+
     // runtime variables
     T* logLikelihoodCUDA = nullptr;
     T logLikelihood = - INFINITY;
@@ -125,10 +127,13 @@ public:
 
     //allocate or check if the arrays are allocated adequately, then replace the param
     __host__ int config(GMMParam_t<T>* GMMParam, GMMDataMultiDim<T, dataDim, U>* data){
+        auto oldSizeComponents = sizeNumComponents;
+        auto oldSizeData = sizeNumData;
+
         // check if the arrays are allocated adequately
-        if(GMMParam->numComponents > sizeNumComponents){
+        if(GMMParam->numComponents > oldSizeComponents){
             // deallocate the old arrays
-            if(sizeNumComponents > 0){
+            if(oldSizeComponents > 0){
                 // device
                 cudaErrChk(cudaFree(weightCUDA));
                 cudaErrChk(cudaFree(meanCUDA));
@@ -146,7 +151,8 @@ public:
 
             }
 
-            auto& numCompo = GMMParam->numComponents; 
+            sizeNumComponents = GMMParam->numComponents; // the new size
+            auto& numCompo = sizeNumComponents;
 
             // allocate the new arrays
             cudaErrChk(cudaMalloc(&weightCUDA, sizeof(T)*numCompo));
@@ -164,27 +170,19 @@ public:
         }
 
         // check the numPoint related arrays
-        if(GMMParam->numComponents * data->getNumData() > sizeNumComponents * sizeNumData){
+        if(GMMParam->numComponents * data->getNumData() > oldSizeData){
             // deallocate the old arrays
-            if(sizeNumData > 0){
+            if(oldSizeData > 0){
                 // device
                 cudaErrChk(cudaFree(posteriorCUDA));
                 cudaErrChk(cudaFree(tempArrayCUDA));
             }
 
-            auto numCompo = GMMParam->numComponents;
-            auto numData = data->getNumData();
+            sizeNumData = GMMParam->numComponents * data->getNumData(); // the new size
 
             // allocate the new arrays
-            cudaErrChk(cudaMalloc(&posteriorCUDA, sizeof(T)*numCompo*numData));
-            cudaErrChk(cudaMalloc(&tempArrayCUDA, sizeof(T)*numCompo*numData*dataDim*dataDim));
-        }
-
-        sizeNumComponents = GMMParam->numComponents;
-        sizeNumData = data->getNumData();
-
-        if(logLikelihoodCUDA == nullptr){
-            cudaErrChk(cudaMalloc(&logLikelihoodCUDA, sizeof(T)));
+            cudaErrChk(cudaMalloc(&posteriorCUDA, sizeof(T)*sizeNumData));
+            cudaErrChk(cudaMalloc(&tempArrayCUDA, sizeof(T)*sizeNumData*dataDim*dataDim));
         }
 
 
@@ -216,7 +214,10 @@ public:
         if(dataDevicePtr != nullptr)cudaErrChk(cudaFree(dataDevicePtr));
         dataDevicePtr = copyToDevice(dataHostPtr);
 
-
+        { // reset the value for reuse
+            logLikelihood = - INFINITY;
+            logLikelihoodOld = - INFINITY;
+        }
         return 0;
     }
 
@@ -225,6 +226,9 @@ public:
 
         reductionTempArraySize = 1024;
         cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(T)*reductionTempArraySize));
+
+        cudaErrChk(cudaMalloc(&logLikelihoodCUDA, sizeof(T)));
+        cudaErrChk(cudaMallocHost(&logResult, sizeof(T)));
     }
 
     __host__ int initGMM(std::string outputPath){
@@ -326,6 +330,15 @@ public:
     }
 
     __host__ ~GMM(){
+        // created in constructor
+        cudaErrChk(cudaStreamDestroy(GMMStream));
+        cudaErrChk(cudaFree(reductionTempArrayCUDA));
+        cudaErrChk(cudaFree(logLikelihoodCUDA));
+        cudaErrChk(cudaFreeHost(logResult));
+
+        // allocated in config
+        if(dataDevicePtr != nullptr) cudaErrChk(cudaFree(dataDevicePtr));
+
         // deallocate the old arrays
         if(sizeNumComponents > 0){
             // device
@@ -336,12 +349,11 @@ public:
             cudaErrChk(cudaFree(normalizerCUDA));
             cudaErrChk(cudaFree(PosteriorCUDA));
 
-            cudaErrChk(cudaFree(posteriorCUDA));
-            cudaErrChk(cudaFree(tempArrayCUDA));
-
-            cudaErrChk(cudaFree(logLikelihoodCUDA));
-
-            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            if(sizeNumData > 0){
+                // device
+                cudaErrChk(cudaFree(posteriorCUDA));
+                cudaErrChk(cudaFree(tempArrayCUDA));
+            }
 
             // host
             delete[] weight;
@@ -404,12 +416,6 @@ private:
             <<<blockNum, blockSize, blockSize*sizeof(T), GMMStream>>>
             (tempArrayCUDA, reductionTempArrayCUDA, dataHostPtr->getNumData(), nullptr, dataHostPtr->getWeight());
         cudaReduction::reduceSumWarp<T><<<1, 32, 0, GMMStream>>>(reductionTempArrayCUDA, logLikelihoodCUDA, blockNum);
-
-        static T* logResult = nullptr;
-
-        if(logResult == nullptr){
-            cudaErrChk(cudaMallocHost(&logResult, sizeof(T)));
-        }
 
         cudaErrChk(cudaMemcpyAsync(logResult, logLikelihoodCUDA, sizeof(T), cudaMemcpyDefault, GMMStream));
 

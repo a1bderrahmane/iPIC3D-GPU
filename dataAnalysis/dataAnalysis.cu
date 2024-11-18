@@ -28,7 +28,7 @@ using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>
 int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, int cycle, std::string outputPath, int device){
 
     std::future<int> future[3];
-    // static cudaGMMWeight::GMM<cudaCommonType, 2, int> gmmArray[3];
+    static cudaGMMWeight::GMM<cudaCommonType, 2, cudaCommonType> gmmArray[3];
 
     auto GMMLambda = [=](int i) mutable {
         using namespace cudaGMMWeight;
@@ -71,8 +71,7 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
         std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
         auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
 
-        //auto& gmm = gmmArray[i];
-        cudaGMMWeight::GMM<cudaCommonType, 2, cudaCommonType> gmm;
+        auto& gmm = gmmArray[i];
         gmm.config(&GMMParam, &GMMData);
         auto ret =  gmm.initGMM(fileOutputPath); // the exact output file name
 
