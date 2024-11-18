@@ -25,16 +25,7 @@ using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>
  * 
  * @param outputPath the output path for the species 
  */
-int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string outputPath, int device){
-
-    
-    using namespace particleArraySoA;
-
-    cudaCommonType* uvwPtr[6] = {
-                                velocitySoACUDAPtr->getElement(U), velocitySoACUDAPtr->getElement(V),
-                                velocitySoACUDAPtr->getElement(U), velocitySoACUDAPtr->getElement(W),
-                                velocitySoACUDAPtr->getElement(V), velocitySoACUDAPtr->getElement(W)
-                                };
+int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, int cycle, std::string outputPath, int device){
 
     std::future<int> future[3];
 
@@ -43,6 +34,7 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string o
 
         cudaErrChk(cudaSetDevice(device));
 
+        // GMM config
         constexpr auto numComponent = 2;
 
         cudaCommonType weightVector[numComponent];
@@ -69,7 +61,16 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string o
             .coVarianceInit = coVarianceMatrix
         };
 
-        GMMDataMultiDim<cudaCommonType, 2> GMMData(velocitySoACUDAPtr->getNOP(), &uvwPtr[i * 2]);
+        // data
+        // generate scale mark data for histogram bins
+        const auto binNum = 10000;
+        cudaCommonType* scaleMark0; cudaErrChk(cudaMalloc(&scaleMark0, binNum * sizeof(cudaCommonType)));
+        cudaCommonType* scaleMark1; cudaErrChk(cudaMalloc(&scaleMark1, binNum * sizeof(cudaCommonType)));
+        velocityHistogram->computeScaleMark(i, scaleMark0, scaleMark1);
+        cudaCommonType* scaleMark[2] = {scaleMark0, scaleMark1};
+
+        GMMDataMultiDim<cudaCommonType, 2> GMMData(10000, scaleMark);
+
 
         // generate exact output file path
         std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
@@ -77,7 +78,13 @@ int GMMAnalysisSpecies(velocitySoA* velocitySoACUDAPtr, int cycle, std::string o
 
         GMM<cudaCommonType, 2> gmm;
         gmm.config(&GMMParam, &GMMData);
-        return gmm.initGMM(fileOutputPath); // the exact output file name
+        auto ret =  gmm.initGMM(fileOutputPath); // the exact output file name
+
+        // free memory
+        cudaErrChk(cudaFree(scaleMark0));
+        cudaErrChk(cudaFree(scaleMark1));
+
+        return ret;
     };
 
     for(int i = 0; i < 3; i++){
@@ -102,8 +109,10 @@ int analysisEntre(c_Solver& KCode, int cycle){
     cudaErrChk(cudaSetDevice(KCode.cudaDeviceOnNode));
 
     // ./velocityGMM/subDomain0/species0/uv_1000.json , like this
-    auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
-    auto HistogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(KCode.myrank) + "/";
+    static auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
+    static auto HistogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(KCode.myrank) + "/";
+
+    static auto velocityHistogram = velocityHistogram::velocityHistogram(12000);
 
     // species by species to save VRAM
     for(int i = 0; i < KCode.ns; i++){
@@ -112,13 +121,13 @@ int analysisEntre(c_Solver& KCode, int cycle){
 
         // histogram
         auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        auto velocityHistogram = velocityHistogram::velocityHistogram(12000, histogramSpeciesOutputPath);
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
-        velocityHistogram.collect(KCode.streams[i]);
+        velocityHistogram.writeToFile(histogramSpeciesOutputPath, KCode.streams[i]);
+        // auto histogramPtr = velocityHistogram.getVelocityHistogramResult(KCode.streams[i]);
 
-        // // GMM
-        // auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        // GMMAnalysisSpecies(&velocitySoACUDA, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
+        // GMM
+        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;

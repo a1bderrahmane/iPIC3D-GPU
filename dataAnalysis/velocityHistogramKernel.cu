@@ -9,13 +9,15 @@ namespace velocityHistogram
 using namespace particleArraySoA;
 
 /**
- * @brief kernel function to calculate the velocity histogram for one species
- * @details the 3 histograms have been updated in advance
- * 
- * @param pclArray the particle array
- * @param histogramCUDAPtrUV the histogram for UV
- * @param histogramCUDAPtrVW the histogram for VW
- * @param histogramCUDAPtrUW the histogram for UW
+/**
+ * @brief Kernel function to compute velocity histograms.
+ * @details launched for each particle
+ *
+ * @param nop Number of particles.
+ * @param u Pointer to the array of u velocity components.
+ * @param v Pointer to the array of v velocity components.
+ * @param w Pointer to the array of w velocity components.
+ * @param histogramCUDAPtr Pointer to the array of 3 velocityHistogramCUDA objects.
  */
 __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
                                         velocityHistogramCUDA* histogramCUDAPtr){
@@ -32,6 +34,21 @@ __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonTy
     histogramCUDAPtr[1].addData(vw, 1);
     histogramCUDAPtr[2].addData(uw, 1);
 
+}
+
+/**
+ * @brief calculate the center of each histogram bin
+ * @details this kernel is launched once for each histogram bin
+ */
+__global__ void scaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr, cudaCommonType* dim0, cudaCommonType* dim1){
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if(idx >= histogramCUDAPtr->getLogicSize())return;
+
+    cudaCommonType center[2];
+    histogramCUDAPtr->centerOfBin(idx, center);
+
+    dim0[idx] = center[0];
+    dim1[idx] = center[1];
 
 }
 

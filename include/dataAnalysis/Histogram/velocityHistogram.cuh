@@ -112,7 +112,7 @@ public:
         return cudaPtr;
     }
 
-    __host__ int getLogicSize(){
+    __host__ __device__ int getLogicSize(){
         return logicSize;
     }
 
@@ -151,6 +151,17 @@ public:
         atomicAdd(&cudaPtr[index], count);
     }
 
+    /**
+     * @brief get the center of the bin
+     * @param index the index of the bin, in the buffer
+     */
+    __device__ void centerOfBin(int index, U* center){
+        int tmp = index;
+        for(int i=0; i<dim; i++){
+            center[i] = min[i] + (tmp % size[i] + 0.5) * resolution[i];
+            tmp /= size[i];
+        }
+    }
 private:
 
     __host__ void allocate(){
@@ -185,6 +196,8 @@ using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, int>;
 
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
 
+__global__ void scaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr, cudaCommonType* dim0, cudaCommonType* dim1);
+
 
 /**
  * @brief Histogram for one species
@@ -206,7 +219,6 @@ private:
 
     int cycleNum;
 
-    std::string filePath;
 
     bool bigEndian;
 
@@ -236,7 +248,7 @@ public:
      * @param initSize the initial size of the histogram buffer, in elements
      * @param path the path to store the output file, directory
      */
-    __host__ velocityHistogram(int initSize, std::string path): filePath(path){
+    __host__ velocityHistogram(int initSize) {
 
         reductionTempArraySize = 1024;
         cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(cudaCommonType)*reductionTempArraySize * 6));
@@ -271,7 +283,7 @@ public:
      * @details Output the 3 velocity histograms to file, for this species in this subdomain
      *          It should be invoked after a previous Init, can be after the B, for it's on CPU
      */
-    __host__ void collect(cudaStream_t stream = 0){
+    __host__ void writeToFile(std::string filePath, cudaStream_t stream = 0){
         cudaErrChk(cudaStreamSynchronize(stream));
         
         for(int i=0; i<3; i++){
@@ -312,6 +324,17 @@ public:
         }
 
 
+    }
+
+    __host__ velocityHistogramCUDA* getVelocityHistogramResult(cudaStream_t stream = 0){
+        cudaErrChk(cudaStreamSynchronize(stream));
+        // now the histogram results on the device buffer
+
+        return histogramHostPtr;
+    }
+
+    __host__ void computeScaleMark(int i, cudaCommonType* scaleMark0, cudaCommonType* scaleMark1, cudaStream_t stream = 0){
+        scaleMarkKernel<<<getGridSize(histogramHostPtr[i].getLogicSize(), 256), 256, 0, stream>>>(histogramCUDAPtr + i, scaleMark0, scaleMark1);
     }
 
     ~velocityHistogram(){
