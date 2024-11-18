@@ -116,9 +116,9 @@ int analysisEntre(c_Solver& KCode, int cycle){
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
         velocityHistogram.writeToFileDouble(histogramSpeciesOutputPath, KCode.streams[i]);
 
-        // // GMM
-        // auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        // GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
+        // GMM
+        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;
@@ -130,7 +130,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
  */
 std::future<int> startAnalysis(c_Solver& KCode, int cycle){
 
-    if(true){
+    if(cycle % 50 != 0){
         return std::future<int>();
     }
 
