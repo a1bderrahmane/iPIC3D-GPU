@@ -65,6 +65,10 @@ public:
         
     }
 
+    __host__ particleArraySoACUDA(): allocated(false){}
+
+    __host__ void updateFromAoS(particleArrayCUDA* pclArray, cudaStream_t stream = 0);
+
 
     __host__ __device__ T* getElement(int i){
         return *elementPtr[i];

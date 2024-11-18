@@ -103,21 +103,22 @@ int analysisEntre(c_Solver& KCode, int cycle){
     static auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
     static auto HistogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(KCode.myrank) + "/";
 
+    static auto velocitySoACUDA = velocitySoA();
     static auto velocityHistogram = velocityHistogram::velocityHistogram(12000);
 
     // species by species to save VRAM
     for(int i = 0; i < KCode.ns; i++){
         // to SoA
-        velocitySoA velocitySoACUDA(KCode.pclsArrayHostPtr[i], KCode.streams[i]);
+        velocitySoACUDA.updateFromAoS(KCode.pclsArrayHostPtr[i], KCode.streams[i]);
 
         // histogram
         auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
         velocityHistogram.writeToFileDouble(histogramSpeciesOutputPath, KCode.streams[i]);
 
-        // GMM
-        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
+        // // GMM
+        // auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        // GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
     }
 
     return 0;
@@ -129,7 +130,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
  */
 std::future<int> startAnalysis(c_Solver& KCode, int cycle){
 
-    if(cycle % 50 != 0){
+    if(true){
         return std::future<int>();
     }
 

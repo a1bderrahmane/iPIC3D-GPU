@@ -35,6 +35,28 @@ __host__ particleArraySoACUDA<T, startElement, stopElement>::particleArraySoACUD
     cudaErrChk(cudaFree(objOnDevice));
 }
 
+
+template<typename T, int startElement, int stopElement>
+__host__ void particleArraySoACUDA<T, startElement, stopElement>::updateFromAoS(particleArrayCUDA* pclArray, cudaStream_t stream){
+    const auto newNOP = pclArray->getNOP();
+
+    if(!allocated){
+        nop = newNOP;
+        allocateMemory();
+        allocated = true;
+    }else if(allocated && nop < newNOP){
+        freeMemory();
+        nop = newNOP * 1.2;
+        allocateMemory();
+    }
+
+    auto objOnDevice = copyToDevice(this, stream);
+    particleToSoAKernel<T, startElement, stopElement><<<getGridSize(nop / 64, 256), 256, 0, stream>>>(pclArray->getArray(), nop, objOnDevice);
+    cudaErrChk(cudaStreamSynchronize(stream));
+    cudaErrChk(cudaFree(objOnDevice));
+}
+
+
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType>;
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 2>;
 template class particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
