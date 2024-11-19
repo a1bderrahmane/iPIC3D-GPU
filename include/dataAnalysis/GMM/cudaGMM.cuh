@@ -143,11 +143,11 @@ public:
                 cudaErrChk(cudaFree(PosteriorCUDA));
 
                 // host
-                delete[] weight;
-                delete[] mean;
-                delete[] coVariance;
-                delete[] coVarianceDecomposed;
-                delete[] normalizer;
+                cudaErrChk(cudaFreeHost(weight));
+                cudaErrChk(cudaFreeHost(mean));
+                cudaErrChk(cudaFreeHost(coVariance));
+                cudaErrChk(cudaFreeHost(coVarianceDecomposed));
+                cudaErrChk(cudaFreeHost(normalizer));
 
             }
 
@@ -162,11 +162,11 @@ public:
             cudaErrChk(cudaMalloc(&normalizerCUDA, sizeof(T)*numCompo));
             cudaErrChk(cudaMalloc(&PosteriorCUDA, sizeof(T)*numCompo));
 
-            weight = new T[numCompo];
-            mean = new T[numCompo*dataDim];
-            coVariance = new T[numCompo*dataDim*dataDim];
-            coVarianceDecomposed = new T[numCompo*dataDim*dataDim];
-            normalizer = new T[numCompo];
+            cudaErrChk(cudaMallocHost(&weight, sizeof(T)*numCompo));
+            cudaErrChk(cudaMallocHost(&mean, sizeof(T)*numCompo*dataDim));
+            cudaErrChk(cudaMallocHost(&coVariance, sizeof(T)*numCompo*dataDim*dataDim));
+            cudaErrChk(cudaMallocHost(&coVarianceDecomposed, sizeof(T)*numCompo*dataDim*dataDim));
+            cudaErrChk(cudaMallocHost(&normalizer, sizeof(T)*numCompo));
         }
 
         // check the numPoint related arrays
@@ -201,18 +201,17 @@ public:
         }
 
         // copy to device
-        cudaErrChk(cudaMemcpy(weightCUDA, weight, sizeof(T)*GMMParam->numComponents, cudaMemcpyHostToDevice));
-        cudaErrChk(cudaMemcpy(meanCUDA, mean, sizeof(T)*GMMParam->numComponents*dataDim, cudaMemcpyHostToDevice));
-        cudaErrChk(cudaMemcpy(coVarianceCUDA, coVariance, sizeof(T)*GMMParam->numComponents*dataDim*dataDim, cudaMemcpyHostToDevice));
-        cudaErrChk(cudaMemcpy(coVarianceDecomposedCUDA, coVariance, sizeof(T)*GMMParam->numComponents*dataDim*dataDim,cudaMemcpyHostToDevice));
+        cudaErrChk(cudaMemcpyAsync(weightCUDA, weight, sizeof(T)*GMMParam->numComponents, cudaMemcpyHostToDevice, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(meanCUDA, mean, sizeof(T)*GMMParam->numComponents*dataDim, cudaMemcpyHostToDevice, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(coVarianceCUDA, coVariance, sizeof(T)*GMMParam->numComponents*dataDim*dataDim, cudaMemcpyHostToDevice, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(coVarianceDecomposedCUDA, coVariance, sizeof(T)*GMMParam->numComponents*dataDim*dataDim,cudaMemcpyHostToDevice, GMMStream));
         // cudaErrChk(cudaMemcpy(normalizerCUDA, normalizer, sizeof(T)*GMMParam->numComponents, cudaMemcpyHostToDevice));
 
         // replace the param
         paramHostPtr = GMMParam;
         dataHostPtr = data;
 
-        if(dataDevicePtr != nullptr)cudaErrChk(cudaFree(dataDevicePtr));
-        dataDevicePtr = copyToDevice(dataHostPtr);
+        cudaErrChk(cudaMemcpyAsync(dataDevicePtr, dataHostPtr, sizeof(GMMDataMultiDim<T, dataDim, U>), cudaMemcpyDefault, GMMStream));
 
         { // reset the value for reuse
             logLikelihood = - INFINITY;
@@ -223,6 +222,8 @@ public:
 
     __host__ GMM(){
         cudaErrChk(cudaStreamCreate(&GMMStream));
+
+        cudaErrChk(cudaMalloc(&dataDevicePtr, sizeof(GMMDataMultiDim<T, dataDim, U>)));
 
         reductionTempArraySize = 1024;
         cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(T)*reductionTempArraySize));
@@ -267,11 +268,11 @@ public:
         auto numComponents = paramHostPtr->numComponents;
         auto numData = dataHostPtr->getNumData();
         // copy the results to host and post process
-        cudaErrChk(cudaMemcpy(weight, weightCUDA, sizeof(T)*numComponents, cudaMemcpyDefault));
-        cudaErrChk(cudaMemcpy(mean, meanCUDA, sizeof(T)*numComponents*dataDim, cudaMemcpyDefault));
-        cudaErrChk(cudaMemcpy(coVariance, coVarianceCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault));
-        cudaErrChk(cudaMemcpy(coVarianceDecomposed, coVarianceDecomposedCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault));
-        cudaErrChk(cudaMemcpy(normalizer, normalizerCUDA, sizeof(T)*numComponents, cudaMemcpyDefault));
+        cudaErrChk(cudaMemcpyAsync(weight, weightCUDA, sizeof(T)*numComponents, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(mean, meanCUDA, sizeof(T)*numComponents*dataDim, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(coVariance, coVarianceCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(coVarianceDecomposed, coVarianceDecomposedCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(normalizer, normalizerCUDA, sizeof(T)*numComponents, cudaMemcpyDefault, GMMStream));
 
         for(int i = 0; i < numComponents; i++){
             weight[i] = exp(weight[i]);
@@ -332,12 +333,13 @@ public:
     __host__ ~GMM(){
         // created in constructor
         cudaErrChk(cudaStreamDestroy(GMMStream));
+
+        cudaErrChk(cudaFree(dataDevicePtr));
         cudaErrChk(cudaFree(reductionTempArrayCUDA));
         cudaErrChk(cudaFree(logLikelihoodCUDA));
         cudaErrChk(cudaFreeHost(logResult));
 
         // allocated in config
-        if(dataDevicePtr != nullptr) cudaErrChk(cudaFree(dataDevicePtr));
 
         // deallocate the old arrays
         if(sizeNumComponents > 0){
@@ -356,11 +358,11 @@ public:
             }
 
             // host
-            delete[] weight;
-            delete[] mean;
-            delete[] coVariance;
-            delete[] coVarianceDecomposed;
-            delete[] normalizer;
+            cudaErrChk(cudaFreeHost(weight));
+            cudaErrChk(cudaFreeHost(mean));
+            cudaErrChk(cudaFreeHost(coVariance));
+            cudaErrChk(cudaFreeHost(coVarianceDecomposed));
+            cudaErrChk(cudaFreeHost(normalizer));
 
         }
     }

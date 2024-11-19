@@ -66,7 +66,8 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
         GMMDataMultiDim<cudaCommonType, 2, cudaCommonType> GMMData
             (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
 
-
+        cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
+        
         // generate exact output file path
         std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
         auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
@@ -75,6 +76,8 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
         gmm.config(&GMMParam, &GMMData);
         auto ret =  gmm.initGMM(fileOutputPath); // the exact output file name
 
+        cudaErrChk(cudaHostUnregister(&GMMData));
+        
         return ret;
     };
 
