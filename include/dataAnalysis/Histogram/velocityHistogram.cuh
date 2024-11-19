@@ -337,11 +337,11 @@ public:
 
         cudaErrChk(cudaStreamSynchronize(stream));
         
-        std::string items[3] = {"UV", "VW", "UW"};
+        std::string items[3] = {"uv", "vw", "uw"};
 
         for(int i=0; i<3; i++){ // UV, VW, UW
             std::ostringstream ossFileName;
-            ossFileName << filePath << "/velocityHistogram_" << MPIdata::get_rank() << "_" << items[i] << "_" << cycleNum << ".vtk";
+            ossFileName << filePath << items[i] << "_" << cycleNum << ".vtk";
 
             std::ofstream vtkFile(ossFileName.str(), std::ios::binary);
 
