@@ -217,7 +217,7 @@ public:
             logLikelihood = - INFINITY;
             logLikelihoodOld = - INFINITY;
         }
-        return 0;
+        return 0; // some cuda async operation are not finished yet, but we are using the same stream
     }
 
     __host__ GMM(){
@@ -273,6 +273,8 @@ public:
         cudaErrChk(cudaMemcpyAsync(coVariance, coVarianceCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
         cudaErrChk(cudaMemcpyAsync(coVarianceDecomposed, coVarianceDecomposedCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
         cudaErrChk(cudaMemcpyAsync(normalizer, normalizerCUDA, sizeof(T)*numComponents, cudaMemcpyDefault, GMMStream));
+
+        cudaErrChk(cudaStreamSynchronize(GMMStream));
 
         for(int i = 0; i < numComponents; i++){
             weight[i] = exp(weight[i]);

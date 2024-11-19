@@ -360,7 +360,7 @@ public:
             for (int j = 0; j < histogramHostPtr[i].getLogicSize(); j++) {
                 cudaCommonType value = histogramBuffer[j];
                 
-                // *(uint64_t*)(&value) = __builtin_bswap64(*(uint64_t*)(&value));
+                *(uint64_t*)(&value) = __builtin_bswap64(*(uint64_t*)(&value));
 
                 vtkFile.write(reinterpret_cast<char*>(&value), sizeof(cudaCommonType));
             }
