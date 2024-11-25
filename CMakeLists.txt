@@ -160,7 +160,7 @@ if(CUDA_ON AND HIP_ON)
   target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
   target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
 
-  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES OFF)
+  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
 elseif(CUDA_ON)
   enable_language(CUDA)
 
