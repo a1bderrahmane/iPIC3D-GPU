@@ -28,6 +28,11 @@
 #define cudaFreeHost hipHostFree
 #define cudaHostAllocDefault hipHostMallocDefault
 #define cudaMallocAsync hipMallocAsync
+#define cudaHostRegisterDefault hipHostRegisterDefault
+#define cudaHostRegister hipHostRegister
+#define cudaHostUnregister hipHostUnregister
+#define cudaMemsetAsync hipMemsetAsync
+#define cudaFreeAsync hipFreeAsync
 
 // Memory Types
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
@@ -49,6 +54,8 @@
 #define cudaEventRecord hipEventRecord
 #define cudaEventSynchronize hipEventSynchronize
 #define cudaEventElapsedTime hipEventElapsedTime
+#define cudaEventDisableTiming hipEventDisableTiming
+#define cudaEventCreateWithFlags hipEventCreateWithFlags
 
 // Texture and Surface References
 #define cudaTextureObject_t hipTextureObject_t

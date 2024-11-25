@@ -140,7 +140,7 @@ file(
 if(CUDA_ON)
   file(GLOB cuda_src_files cudaKernel/*.cu main/*.cu)
   if(HIP_ON)
-    set_source_files_properties(cuda_src_files PROPERTIES LANGUAGES HIP)
+    set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
   endif()
   list(APPEND src_files ${cuda_src_files})
 endif()
@@ -156,6 +156,11 @@ if(CUDA_ON AND HIP_ON)
   set(DEVICE_COMPILER hipcc)
   target_link_libraries(iPIC3Dlib PRIVATE hip::device)
   target_link_libraries(iPIC3Dlib PRIVATE hip::host)
+
+  target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
+  target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES OFF)
 elseif(CUDA_ON)
   enable_language(CUDA)
 
