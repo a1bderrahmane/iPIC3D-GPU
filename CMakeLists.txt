@@ -173,7 +173,9 @@ set(include_path include)
 if(CUDA_ON)
   list(APPEND include_path include/CUDA)
   if(NOT HIP_ON)
-  list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  else()
+    list(APPEND include_path hip)
   endif()
 endif()
 target_include_directories(
@@ -188,11 +190,6 @@ set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
-endif()
-
-if(USE_CUDA)
-    list(APPEND linkLibraries cuda)
-    list(APPEND linkLibraries cudart)
 endif()
 
 if (USE_CATALYST)

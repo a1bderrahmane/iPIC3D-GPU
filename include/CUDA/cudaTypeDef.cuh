@@ -7,8 +7,7 @@
 #else
 #include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
-#define CUDA HIP
-#define cuda hip
+#include "hipifly.hpp"
 #endif
 
 #include <iostream>
@@ -37,11 +36,8 @@ using cudaTypeArray1 = T *;
 
 #define ERROR_CHECK_C_LIKE false
 
-#ifndef HIPIFLY
+
 #define cudaErrChk(call) cudaCheck((call), __FILE__, __LINE__)
-#else
-#define hipErrChk(call) hipCheck((call), __FILE__, __LINE__)
-#endif
 
 __host__ inline void cudaCheck(cudaError_t code, const char *file, int line)
 {
@@ -71,10 +67,10 @@ __host__ inline void cudaCheck(cudaError_t code, const char *file, int line)
 
 #else
 
-#if defined(__HIPCC__) // NVCC
-    #define HIP_ALIGN(n) __align__(n)
+#if defined(__HIPCC__) // HIPCC
+    #define CUDA_ALIGN(n) __align__(n)
 #else
-    #define HIP_ALIGN(n)
+    #define CUDA_ALIGN(n)
 #endif
 
 #endif
