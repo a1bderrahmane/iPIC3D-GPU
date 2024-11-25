@@ -1,7 +1,7 @@
 #ifndef _GRID_CUDA_H_
 #define _GRID_CUDA_H_
 
-#include "cuda.h"
+
 #include <iostream>
 #include <stdexcept>
 

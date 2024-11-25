@@ -49,7 +49,6 @@
 
 #if CUDA_ON == true
 #include "cudaTypeDef.cuh"
-#include "cuda.h"
 #include "momentKernel.cuh"
 #include "particleArrayCUDA.cuh"
 #include "moverKernel.cuh"

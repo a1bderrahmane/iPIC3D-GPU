@@ -1,8 +1,16 @@
 #ifndef _CUDA_TYPE_DEF_H_
 #define _CUDA_TYPE_DEF_H_
 
+#ifndef HIPIFLY
 #include <cuda.h>
 #include "cuda_fp16.h"
+#else
+#include <hip/hip_runtime.h>
+#include <hip/hip_fp16.h>
+#define CUDA HIP
+#define cuda hip
+#endif
+
 #include <iostream>
 #include <sstream>
 
@@ -28,7 +36,13 @@ using cudaTypeArray1 = T *;
 /////////////////////////////////// CUDA API HOST call wrapper
 
 #define ERROR_CHECK_C_LIKE false
+
+#ifndef HIPIFLY
 #define cudaErrChk(call) cudaCheck((call), __FILE__, __LINE__)
+#else
+#define hipErrChk(call) hipCheck((call), __FILE__, __LINE__)
+#endif
+
 __host__ inline void cudaCheck(cudaError_t code, const char *file, int line)
 {
     if (code != cudaSuccess)
@@ -47,12 +61,24 @@ __host__ inline void cudaCheck(cudaError_t code, const char *file, int line)
 
 /////////////////////////////////// CUDA data alignment
 
+#ifndef HIPIFLY
 
 #if defined(__CUDACC__) // NVCC
     #define CUDA_ALIGN(n) __align__(n)
 #else
     #define CUDA_ALIGN(n) 
 #endif
+
+#else
+
+#if defined(__HIPCC__) // NVCC
+    #define HIP_ALIGN(n) __align__(n)
+#else
+    #define HIP_ALIGN(n)
+#endif
+
+#endif
+
 
 /////////////////////////////////// CUDA type copy to device
 
