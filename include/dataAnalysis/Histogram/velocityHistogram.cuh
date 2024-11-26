@@ -1,7 +1,6 @@
 #ifndef _VELOCITY_HISTOGRAM_
 #define _VELOCITY_HISTOGRAM_
 
-#include "cuda.h"
 #include "cudaTypeDef.cuh"
 
 

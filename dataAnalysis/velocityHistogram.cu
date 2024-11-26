@@ -2,7 +2,7 @@
 #include "particleArraySoACUDA.cuh"
 
 #include <iostream>
-#include <cuda.h>
+#include "cudaTypeDef.cuh"
 #include "cudaReduction.cuh"
 
 

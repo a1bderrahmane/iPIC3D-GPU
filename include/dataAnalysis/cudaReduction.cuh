@@ -2,8 +2,7 @@
 #define _CUDA_REDUCTION_H_
 
 #include <iostream>
-#include "cuda.h"
-#include "cudaReduction.cuh"
+#include "cudaTypeDef.cuh"
 #include <assert.h>
 
 namespace cudaReduction

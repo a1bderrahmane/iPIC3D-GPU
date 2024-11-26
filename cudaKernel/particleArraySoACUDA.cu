@@ -1,6 +1,6 @@
 #include "particleArraySoACUDA.cuh"
 #include "particleArrayCUDA.cuh"
-#include "cuda.h"
+#include "cudaTypeDef.cuh"
 
 
 
