@@ -33,6 +33,7 @@
 #define cudaHostUnregister hipHostUnregister
 #define cudaMemsetAsync hipMemsetAsync
 #define cudaFreeAsync hipFreeAsync
+#define cudaMallocHost hipHostMalloc // hipMallocHost is deprecated, and there is no cudaHostMalloc but cudaHostAlloc
 
 // Memory Types
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
@@ -75,6 +76,8 @@
 #define cudaLaunchKernel hipLaunchKernelGGL
 
 
+// warp primitive
+#define __shfl_down_sync __shfl_down
 
 
 
