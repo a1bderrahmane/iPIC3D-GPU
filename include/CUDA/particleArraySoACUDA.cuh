@@ -28,29 +28,29 @@ private:
     int nop;
     int size;
 
-    T* u;
-    T* v;
-    T* w;
-    T* q;
-    T* x;
-    T* y;
-    T* z;
-    T* t;
+    // T* u;
+    // T* v;
+    // T* w;
+    // T* q;
+    // T* x;
+    // T* y;
+    // T* z;
+    // T* t;
     
-    T** elementPtr[8] = {&u, &v, &w, &q, &x, &y, &z, &t}; // array of pointers to the elements
+    T* elementPtr[8]; // array of pointers to the elements
 
     bool allocated = true;
 
 private:
     __host__ void allocateMemory(){
         for (int i = startElement; i <= stopElement; i++){ // only allocate memory for u, v, w
-            cudaErrChk(cudaMalloc(elementPtr[i], size * sizeof(T)));
+            cudaErrChk(cudaMalloc(&(elementPtr[i]), size * sizeof(T)));
         }
     }
 
     __host__ void freeMemory(){
         for (int i = startElement; i <= stopElement; i++){
-            cudaErrChk(cudaFree(*elementPtr[i]));
+            cudaErrChk(cudaFree(elementPtr[i]));
         }
     }
 
@@ -62,20 +62,16 @@ public:
      */
     __host__ particleArraySoACUDA(particleArrayCUDA* pclArray, cudaStream_t stream = 0);
 
-    __host__ particleArraySoACUDA(T* u, T* v, T* w, int nop): nop(nop), u(u), v(v), w(w), allocated(false){
-        
-    }
-
     __host__ particleArraySoACUDA(): allocated(false){}
 
     __host__ void updateFromAoS(particleArrayCUDA* pclArray, cudaStream_t stream = 0);
 
 
-    __host__ __device__ T* getElement(int i){
-        return *elementPtr[i];
+    __host__ __device__ T* getElement(int i) const {
+        return elementPtr[i];
     }
 
-    __host__ __device__ int getNOP(){
+    __host__ __device__ int getNOP() const {
         return nop;
     }
 
