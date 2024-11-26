@@ -1,7 +1,7 @@
 #ifndef _HASHED_SUM_H_
 #define _HASHED_SUM_H_
 
-#include "cuda.h"
+
 #include "cudaTypeDef.cuh"
 
 

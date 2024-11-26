@@ -5,7 +5,6 @@
 #include <stdexcept>
 #include <iostream>
 #include "cudaTypeDef.cuh"
-#include "cuda.h"
 #include <cassert>
 
 

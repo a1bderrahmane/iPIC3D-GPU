@@ -40,7 +40,6 @@ class OutputWrapperFPP;
 #endif
 
 #if CUDA_ON == true
-#include "cuda.h"
 #include "cudaTypeDef.cuh"
 #include "moverKernel.cuh"
 #include "momentKernel.cuh"

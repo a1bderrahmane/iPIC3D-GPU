@@ -49,7 +49,6 @@
 
 #if CUDA_ON == true
 #include "cudaTypeDef.cuh"
-#include "cuda.h"
 #include "momentKernel.cuh"
 #include "particleArrayCUDA.cuh"
 #include "moverKernel.cuh"
@@ -648,7 +647,7 @@ int c_Solver::cudaLauncherAsync(const int species){
                           (momentParamCUDAPtr[species], grid3DCUDACUDAPtr, momentsCUDAPtr[species]);
 
   // Copy 6 exiting hashedSum to host
-  cudaErrChk(cudaStreamWaitEvent(streams[species+ns], event1));
+  cudaErrChk(cudaStreamWaitEvent(streams[species+ns], event1, 0));
   cudaErrChk(cudaMemcpyAsync(hashedSumArrayHostPtr[species], hashedSumArrayCUDAPtr[species], 
                               6*sizeof(hashedSum), cudaMemcpyDefault, streams[species+ns]));
 
@@ -685,7 +684,7 @@ int c_Solver::cudaLauncherAsync(const int species){
   part[species].get_pcl_array().setSize(x);
 
   // Sorting, the first cycle, x might be 0
-  cudaErrChk(cudaStreamWaitEvent(streams[species], event2));
+  cudaErrChk(cudaStreamWaitEvent(streams[species], event2, 0));
   sortingKernel1<<<getGridSize(x, 128), 128, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
                                                           fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+7, x);
   sortingKernel2<<<getGridSize((int)(pclsArrayHostPtr[species]->getNOP()-x), 256), 256, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 

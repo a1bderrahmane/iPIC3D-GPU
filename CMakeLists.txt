@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
-project(iPic3D LANGUAGES C CXX CUDA)
+project(iPic3D LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -42,9 +42,10 @@ option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_HDF5 "Use HDF5 library" ON)
-option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
+option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
+option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
 
 
 option(BENCH_MARK "Print tasks time" OFF)
@@ -140,13 +141,32 @@ file(
 # CUDA source files
 if(CUDA_ON)
   file(GLOB cuda_src_files cudaKernel/*.cu main/*.cu)
+  if(HIP_ON)
+    set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
+  endif()
   list(APPEND src_files ${cuda_src_files})
 endif()
 
 add_library( iPIC3Dlib ${src_files} )
-if(CUDA_ON)
+
+
+if(CUDA_ON AND HIP_ON)
+  find_package(HIP REQUIRED)
+  enable_language(HIP)
+  message(STATUS "Using HIP environment.")
+  set(DEVICE_LANGUAGE HIP)
+  set(DEVICE_COMPILER hipcc)
+  target_link_libraries(iPIC3Dlib PRIVATE hip::device)
+  target_link_libraries(iPIC3Dlib PRIVATE hip::host)
+
+  target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
+  target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
+elseif(CUDA_ON)
+  enable_language(CUDA)
+
   set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
@@ -162,7 +182,11 @@ if(CUDA_ON)
   list(APPEND include_path include/dataAnalysis)
   list(APPEND include_path include/dataAnalysis/GMM)
   list(APPEND include_path include/dataAnalysis/Histogram)
-  list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  if(NOT HIP_ON)
+    list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  else()
+    list(APPEND include_path hip)
+  endif()
 endif()
 target_include_directories(
   iPIC3Dlib
@@ -176,11 +200,6 @@ set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
-endif()
-
-if(USE_CUDA)
-    list(APPEND linkLibraries cuda)
-    list(APPEND linkLibraries cudart)
 endif()
 
 if (USE_CATALYST)
@@ -224,6 +243,10 @@ if (CUDA_ON)
     target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=true)
   else()
     target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
+  endif()
+
+  if(HIP_ON)
+  target_compile_definitions(iPIC3Dlib PUBLIC HIPIFLY)
   endif()
 else()
   target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=false)

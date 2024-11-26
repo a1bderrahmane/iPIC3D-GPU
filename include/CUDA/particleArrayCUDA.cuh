@@ -6,7 +6,6 @@
 #include "cudaTypeDef.cuh"
 #include "Particle.h"
 #include "Particles3D.h"
-#include "cuda.h"
 #include "arrayCUDA.cuh"
 
 class particleArrayCUDA : public arrayCUDA<SpeciesParticle, 32>
