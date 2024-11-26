@@ -33,15 +33,8 @@ int main(int argc, char **argv) {
 
  MPIdata::init(&argc, &argv);
  {
-#ifdef DEBUG_MODE
-//DBG
-int volatile j = 0;
-while(j == 0){
-  
-}
-#endif
 #if CUDA_ON==true
-  if(MPIdata::get_rank() == 0)std::cout << "The Software was compiled with CUDA" << std::endl;
+  if(MPIdata::get_rank() == 0)std::cout << "The Software was built for GPU" << std::endl;
 #endif
 
   iPic3D::c_Solver KCode;

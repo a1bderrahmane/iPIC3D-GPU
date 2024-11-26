@@ -684,14 +684,15 @@ int c_Solver::cudaLauncherAsync(const int species){
                               x*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[species+ns]));
   part[species].get_pcl_array().setSize(x);
 
-  // Sorting
+  // Sorting, the first cycle, x might be 0
   cudaErrChk(cudaStreamWaitEvent(streams[species], event2));
   sortingKernel1<<<getGridSize(x, 128), 128, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
                                                           fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+7, x);
   sortingKernel2<<<getGridSize((int)(pclsArrayHostPtr[species]->getNOP()-x), 256), 256, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
                                                           fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+6, pclsArrayHostPtr[species]->getNOP()-x);
 
-  
+  cudaErrChk(cudaEventDestroy(event1));
+  cudaErrChk(cudaEventDestroy(event2));
   cudaErrChk(cudaStreamSynchronize(streams[species+ns])); // exiting particle copied
   return x;
 }
@@ -813,7 +814,7 @@ bool c_Solver::ParticlesMover()
     // copy the new object to device, device has new copy of the object now
     cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));
     
-    // moment for entering particle
+    // moment for entering particle, might be 0
     momentKernelNew<<<getGridSize(part[i].getNOP(), 128), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
 
