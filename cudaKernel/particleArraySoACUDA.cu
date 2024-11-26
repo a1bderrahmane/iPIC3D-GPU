@@ -28,6 +28,7 @@ __global__ void particleToSoAKernel(SpeciesParticle* pclArray, int nop, particle
 template<typename T, int startElement, int stopElement>
 __host__ particleArraySoACUDA<T, startElement, stopElement>::particleArraySoACUDA(particleArrayCUDA* pclArray, cudaStream_t stream){
     nop = pclArray->getNOP();
+    size = nop * 1.2;
     allocateMemory();
     auto objOnDevice = copyToDevice(this, stream);
     particleToSoAKernel<T, startElement, stopElement><<<getGridSize(nop / 64, 256), 256, 0, stream>>>(pclArray->getArray(), nop, objOnDevice);
@@ -38,15 +39,15 @@ __host__ particleArraySoACUDA<T, startElement, stopElement>::particleArraySoACUD
 
 template<typename T, int startElement, int stopElement>
 __host__ void particleArraySoACUDA<T, startElement, stopElement>::updateFromAoS(particleArrayCUDA* pclArray, cudaStream_t stream){
-    const auto newNOP = pclArray->getNOP();
+    nop = pclArray->getNOP();
 
     if(!allocated){
-        nop = newNOP;
+        size = nop * 1.2;
         allocateMemory();
         allocated = true;
-    }else if(allocated && nop < newNOP){
+    }else if(allocated && size < nop){
         freeMemory();
-        nop = newNOP * 1.2;
+        size = nop * 1.2;
         allocateMemory();
     }
 

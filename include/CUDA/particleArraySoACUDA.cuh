@@ -26,6 +26,7 @@ class particleArraySoACUDA
 
 private:
     int nop;
+    int size;
 
     T* u;
     T* v;
@@ -43,7 +44,7 @@ private:
 private:
     __host__ void allocateMemory(){
         for (int i = startElement; i <= stopElement; i++){ // only allocate memory for u, v, w
-            cudaErrChk(cudaMalloc(elementPtr[i], nop * sizeof(T)));
+            cudaErrChk(cudaMalloc(elementPtr[i], size * sizeof(T)));
         }
     }
 
