@@ -45,7 +45,7 @@ option(USE_HDF5 "Use HDF5 library" ON)
 option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
-option(HIP_ON "Use HIP" ON) # Set it to OFF if you want to use CUDA
+option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
 
 
 option(BENCH_MARK "Print tasks time" OFF)
