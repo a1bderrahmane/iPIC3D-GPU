@@ -42,10 +42,10 @@ option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_HDF5 "Use HDF5 library" ON)
-option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
+option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
-option(HIP_ON "Use HIP" ON)
+option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
 
 
 option(BENCH_MARK "Print tasks time" OFF)
