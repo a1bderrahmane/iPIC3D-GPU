@@ -245,8 +245,9 @@ private:
     bool bigEndian;
 
     int reduceBlockNum(int dataSize, int blockSize){
-        if(dataSize < 4096)dataSize = 4096;
-        auto blockNum = getGridSize(dataSize / 4096, blockSize); // 4096 elements per thread
+        constexpr int elementsPerThread = 128;
+        if(dataSize < elementsPerThread)dataSize = elementsPerThread;
+        auto blockNum = getGridSize(dataSize / elementsPerThread, blockSize); // 4096 elements per thread
         blockNum = blockNum > 1024 ? 1024 : blockNum;
 
         if(reductionTempArraySize < blockNum){
