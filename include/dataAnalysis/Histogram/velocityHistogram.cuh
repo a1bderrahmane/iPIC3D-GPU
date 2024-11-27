@@ -154,6 +154,24 @@ public:
         atomicAdd(&cudaPtr[index], count);
     }
 
+
+    __device__ int getIndex(const U* data){
+        int index = 0;
+        
+        for(int i=dim-1; i>=0; i--){
+            // check the range
+            if(data[i] < min[i] || data[i] > max[i]){assert(0); return -1;}
+
+            auto tmp = (int)((data[i] - min[i]) / resolution[i]);
+            if(tmp == size[i])tmp--; // the max value
+            index +=  tmp;
+            if(i != 0)index *= size[i-1];
+        }
+
+        if(index >= logicSize)return -1;
+        return index;
+    }
+
     /**
      * @brief get the center of the bin
      * @param index the index of the bin, in the buffer
@@ -195,9 +213,12 @@ public:
 
 namespace velocityHistogram{
 
-using velocityHistogramCUDA = histogram::histogramCUDA<cudaCommonType, 2, cudaCommonType>;
+using histogramTypeIn = cudaCommonType;
+using histogramTypeOut = cudaTypeSingle;
 
-using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
+using velocityHistogramCUDA = histogram::histogramCUDA<histogramTypeIn, 2, histogramTypeOut>;
+
+using velocitySoA = particleArraySoA::particleArraySoACUDA<histogramTypeIn, 0, 3>;
 
 
 /**
@@ -214,9 +235,9 @@ private:
     int binThisDim[2] = {100, 100};
 
     int reductionTempArraySize = 0;
-    cudaCommonType* reductionTempArrayCUDA;
-    cudaCommonType* reductionMinResultCUDA;
-    cudaCommonType* reductionMaxResultCUDA;
+    histogramTypeIn* reductionTempArrayCUDA;
+    histogramTypeIn* reductionMinResultCUDA;
+    histogramTypeIn* reductionMaxResultCUDA;
 
     int cycleNum;
 
@@ -230,7 +251,7 @@ private:
 
         if(reductionTempArraySize < blockNum){
             cudaErrChk(cudaFree(reductionTempArrayCUDA));
-            cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(cudaCommonType)*blockNum * 6));
+            cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(histogramTypeIn)*blockNum * 6));
             reductionTempArraySize = blockNum;
         }
 
@@ -252,9 +273,9 @@ public:
     __host__ velocityHistogram(int initSize) {
 
         reductionTempArraySize = 1024;
-        cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(cudaCommonType)*reductionTempArraySize * 6));
+        cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(histogramTypeIn)*reductionTempArraySize * 6));
 
-        cudaErrChk(cudaMalloc(&reductionMinResultCUDA, sizeof(cudaCommonType)*6));
+        cudaErrChk(cudaMalloc(&reductionMinResultCUDA, sizeof(histogramTypeIn)*6));
         reductionMaxResultCUDA = reductionMinResultCUDA + 3;
 
         histogramHostPtr = newHostPinnedObjectArray<velocityHistogramCUDA>(3, initSize);
@@ -370,11 +391,54 @@ public:
 
     }
 
-    __host__ cudaCommonType* getVelocityHistogramCUDAArray(const int i){
+    __host__ void writeToFileFloat(std::string filePath, cudaStream_t stream = 0){
+        cudaErrChk(cudaStreamSynchronize(stream));
+        
+        for(int i=0; i<3; i++){
+            histogramHostPtr[i].copyHistogramAsync(stream);
+        }
+
+        cudaErrChk(cudaStreamSynchronize(stream));
+        
+        std::string items[3] = {"uv", "vw", "uw"};
+
+        for(int i=0; i<3; i++){ // UV, VW, UW
+            std::ostringstream ossFileName;
+            ossFileName << filePath << items[i] << "_" << cycleNum << ".vtk";
+
+            std::ofstream vtkFile(ossFileName.str(), std::ios::binary);
+
+            vtkFile << "# vtk DataFile Version 3.0\n";
+            vtkFile << "Velocity Histogram\n";
+            vtkFile << "BINARY\n";  
+            vtkFile << "DATASET STRUCTURED_POINTS\n";
+            vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
+            vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
+            vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";  
+            vtkFile << "POINT_DATA " << histogramHostPtr[i].getLogicSize() << "\n";  
+            vtkFile << "SCALARS scalars float 1\n";  
+            vtkFile << "LOOKUP_TABLE default\n";  
+
+            auto histogramBuffer = histogramHostPtr[i].getHistogram();
+            for (int j = 0; j < histogramHostPtr[i].getLogicSize(); j++) {
+                cudaTypeSingle value = histogramBuffer[j];
+                
+                *(uint32_t*)(&value) = __builtin_bswap32(*(uint32_t*)(&value));
+
+                vtkFile.write(reinterpret_cast<char*>(&value), sizeof(cudaTypeSingle));
+            }
+
+            vtkFile.close();
+        }
+
+
+    }
+
+    __host__ histogramTypeOut* getVelocityHistogramCUDAArray(const int i){
         return histogramHostPtr[i].getHistogramCUDA();
     }
 
-    __host__ cudaCommonType** getHistogramScaleMark(const int i){
+    __host__ histogramTypeIn** getHistogramScaleMark(const int i){
         return histogramHostPtr[i].getScaleMarkCUDAPtrs();
     }
 

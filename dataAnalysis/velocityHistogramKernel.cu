@@ -19,16 +19,16 @@ using namespace particleArraySoA;
  * @param w Pointer to the array of w velocity components.
  * @param histogramCUDAPtr Pointer to the array of 3 velocityHistogramCUDA objects.
  */
-__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w,
+__global__ void velocityHistogramKernel(int nop, histogramTypeIn* u, histogramTypeIn* v, histogramTypeIn* w,
                                         velocityHistogramCUDA* histogramCUDAPtr){
 
     int pidx = threadIdx.x + blockIdx.x * blockDim.x;
     if(pidx >= nop)return;
 
-    const cudaCommonType uvw[3] = {u[pidx], v[pidx], w[pidx]};
-    const cudaCommonType uv[2] = {uvw[0], uvw[1]};
-    const cudaCommonType vw[2] = {uvw[1], uvw[2]};
-    const cudaCommonType uw[2] = {uvw[0], uvw[2]};
+    const histogramTypeIn uvw[3] = {u[pidx], v[pidx], w[pidx]};
+    const histogramTypeIn uv[2] = {uvw[0], uvw[1]};
+    const histogramTypeIn vw[2] = {uvw[1], uvw[2]};
+    const histogramTypeIn uw[2] = {uvw[0], uvw[2]};
 
     histogramCUDAPtr[0].addData(uv, 1);
     histogramCUDAPtr[1].addData(vw, 1);
@@ -36,23 +36,68 @@ __global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonTy
 
 }
 
-__global__ void velocityHistogramKernel(int nop, cudaCommonType* u, cudaCommonType* v, cudaCommonType* w, cudaCommonType* q,
+__global__ void velocityHistogramKernel(int nop, histogramTypeIn* u, histogramTypeIn* v, histogramTypeIn* w, histogramTypeIn* q,
                                         velocityHistogramCUDA* histogramCUDAPtr){
 
     int pidx = threadIdx.x + blockIdx.x * blockDim.x;
     if(pidx >= nop)return;
 
-    const cudaCommonType uvw[3] = {u[pidx], v[pidx], w[pidx]};
-    const cudaCommonType uv[2] = {uvw[0], uvw[1]};
-    const cudaCommonType vw[2] = {uvw[1], uvw[2]};
-    const cudaCommonType uw[2] = {uvw[0], uvw[2]};
+    const histogramTypeIn uvw[3] = {u[pidx], v[pidx], w[pidx]};
+    const histogramTypeIn uv[2] = {uvw[0], uvw[1]};
+    const histogramTypeIn vw[2] = {uvw[1], uvw[2]};
+    const histogramTypeIn uw[2] = {uvw[0], uvw[2]};
 
-    const auto qAbs = abs(q[pidx] * 10e5);
+    const histogramTypeOut qAbs = abs(q[pidx] * 10e5); // float
     //const int qAbs = 1;
 
     histogramCUDAPtr[0].addData(uv, qAbs);
     histogramCUDAPtr[1].addData(vw, qAbs);
     histogramCUDAPtr[2].addData(uw, qAbs);
+
+}
+
+
+
+__global__ void velocityHistogramKernelOne(int nop, histogramTypeIn* d1, histogramTypeIn* d2, histogramTypeIn* q,
+                                        velocityHistogramCUDA* histogramCUDAPtr){
+
+    int pidx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gridSize = gridDim.x * blockDim.x;
+    
+
+    extern __shared__ histogramTypeOut sHistogram[];
+
+    histogramTypeIn d1d2[2];
+    histogramTypeOut qAbs; // float
+
+    // Initialize shared memory to zero
+    for (int i = threadIdx.x; i < histogramCUDAPtr[0].getLogicSize(); i += blockDim.x) {
+        sHistogram[i] = 0.0;
+    }
+    __syncthreads();
+
+    for(int i = pidx; i < nop; i += gridSize){
+        
+        d1d2[0] = d1[i];
+        d1d2[1] = d2[i];
+
+        qAbs = abs(q[i] * 10e5); 
+
+        const auto index = histogramCUDAPtr[0].getIndex(d1d2);
+        atomicAdd(&sHistogram[index], qAbs);
+    }
+
+    __syncthreads();
+
+    // use one warp to update the histogram
+    const auto histogramSize = histogramCUDAPtr[0].getLogicSize();
+    auto gHistogram = histogramCUDAPtr[0].getHistogramCUDA();
+    constexpr int warpSize = 32;
+    if(threadIdx.x < warpSize){
+        for(int i = threadIdx.x; i < histogramSize; i += warpSize){
+            atomicAdd(&gHistogram[i], sHistogram[i]);
+        }
+    }
 
 }
 

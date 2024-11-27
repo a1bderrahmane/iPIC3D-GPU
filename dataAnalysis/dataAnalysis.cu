@@ -27,8 +27,10 @@ using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>
  */
 int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, int cycle, std::string outputPath, int device){
 
+    using weightType = cudaTypeSingle;
+
     std::future<int> future[3];
-    static cudaGMMWeight::GMM<cudaCommonType, 2, cudaCommonType> gmmArray[3];
+    static cudaGMMWeight::GMM<cudaCommonType, 2, weightType> gmmArray[3];
 
     auto GMMLambda = [=](int i) mutable {
         using namespace cudaGMMWeight;
@@ -63,7 +65,7 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
         };
 
         // data
-        GMMDataMultiDim<cudaCommonType, 2, cudaCommonType> GMMData
+        GMMDataMultiDim<cudaCommonType, 2, weightType> GMMData
             (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
 
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
@@ -117,7 +119,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
         // histogram
         auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
         velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
-        velocityHistogram.writeToFileDouble(histogramSpeciesOutputPath, KCode.streams[i]);
+        velocityHistogram.writeToFileFloat(histogramSpeciesOutputPath, KCode.streams[i]);
 
         // GMM
         auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
