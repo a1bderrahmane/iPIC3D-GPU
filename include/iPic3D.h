@@ -149,6 +149,8 @@ namespace iPic3D {
     cudaTypeArray1<cudaCommonType>* momentsCUDAPtr; // for every species
     // [nxn][nyn][nzn][2*4], a piece of cuda memory to hold E and B from host
     cudaTypeArray1<cudaCommonType> fieldForPclCUDAPtr; // for all species
+
+    cudaTypeArray1<cudaCommonType> fieldForPclHostPtr;
     
 
 #endif

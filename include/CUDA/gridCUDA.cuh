@@ -69,14 +69,14 @@ private:
                             cudaCommonType w0x, cudaCommonType w0y, cudaCommonType w0z,
                             cudaCommonType w1x, cudaCommonType w1y, cudaCommonType w1z)
     {
-        weights[0] = w0x*w0y*w0z; // weight000
-        weights[1] = w0x*w0y*w1z; // weight001
-        weights[2] = w0x*w1y*w0z; // weight010
-        weights[3] = w0x*w1y*w1z; // weight011
-        weights[4] = w1x*w0y*w0z; // weight100
-        weights[5] = w1x*w0y*w1z; // weight101
-        weights[6] = w1x*w1y*w0z; // weight110
-        weights[7] = w1x*w1y*w1z; // weight111
+        weights[0] = w1x*w1y*w1z; // weight111
+        weights[1] = w0x*w1y*w1z; // weight011
+        weights[2] = w0x*w0y*w1z; // weight001
+        weights[3] = w1x*w0y*w1z; // weight101
+        weights[4] = w1x*w1y*w0z; // weight110
+        weights[5] = w0x*w1y*w0z; // weight010
+        weights[6] = w0x*w0y*w0z; // weight000
+        weights[7] = w1x*w0y*w0z; // weight100
     }
 
     __host__ __device__ void make_grid_position_safe(cudaCommonType& cx_pos, cudaCommonType& cy_pos, cudaCommonType& cz_pos)const

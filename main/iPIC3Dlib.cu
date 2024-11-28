@@ -403,7 +403,13 @@ int c_Solver::initCUDA(){
 
   }
 
-  cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
+  // cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
+
+  const int fieldSize = grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1);
+
+  cudaMallocAsync(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaCommonType), 0);
+
+  cudaErrChk(cudaHostAlloc((void**)&fieldForPclHostPtr, fieldSize * 24 * sizeof(cudaCommonType), 0));
 
   cudaDeviceSynchronize();
 
@@ -420,6 +426,7 @@ int c_Solver::deInitCUDA(){
   cudaFree(grid3DCUDACUDAPtr);
 
   cudaFree(fieldForPclCUDAPtr);
+  cudaFreeHost(fieldForPclHostPtr);
 
   // release device objects
   for(int i=0; i<ns; i++){
@@ -693,7 +700,8 @@ bool c_Solver::ParticlesMover()
   {
     timeTasks_set_main_task(TimeTasks::PARTICLES);
     // Should change this to add background field
-    EMf->set_fieldForPcls();
+    //EMf->set_fieldForPcls();
+    EMf->set_fieldForPclsToCenter(fieldForPclHostPtr);
 
 #if MOVER_CUDA_ON==false
     pad_particle_capacities();
@@ -731,9 +739,10 @@ bool c_Solver::ParticlesMover()
 #else
     auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
     //! copy fieldForPcls to device, for every species 
-    cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, (void*)&(EMf->get_fieldForPcls().get(0,0,0,0)), gridSize*8*sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
+    //cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, (void*)&(EMf->get_fieldForPcls().get(0,0,0,0)), gridSize*8*sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
+    cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, fieldForPclHostPtr, (grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1)) * 24 * sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
     cudaErrChk(cudaStreamSynchronize(streams[0]));
-    
+
     std::future<int> results[ns];
     for(int i=0; i<ns; i++){
       //part[i].get_pcl_array().clear(); // clear the host pclArray

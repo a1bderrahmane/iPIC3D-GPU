@@ -133,6 +133,9 @@ class EMfields3D                // :public Field
 
     /*! copy the field data to the array used to move the particles */
     void set_fieldForPcls();
+
+    void set_fieldForPclsToCenter(cudaCommonType *fieldForPclsOnCenter);
+
     /*! communicate ghost for grid -> Particles interpolation */
     void communicateGhostP2G(int ns);
     /*! sum moments (interp_P2G) versions */

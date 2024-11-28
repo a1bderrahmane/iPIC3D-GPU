@@ -82,27 +82,28 @@ __global__ void moverKernel(moverParameter *moverParam,
         int cx, cy, cz;
         grid->get_safe_cell_and_weights(xavg, yavg, zavg, cx, cy, cz, weights);
 
-        const commonType *field_components[8];
-        get_field_components_for_cell(field_components, fieldForPcls, grid, cx, cy, cz);
-
-        commonType sampled_field[8];
-        for (int i = 0; i < 8; i++)
+        commonType sampled_field[6];
+        for (int i = 0; i < 6; i++)
             sampled_field[i] = 0;
         commonType &Bxl = sampled_field[0];
         commonType &Byl = sampled_field[1];
         commonType &Bzl = sampled_field[2];
-        commonType &Exl = sampled_field[0 + moverParam->DFIELD_3or4];
-        commonType &Eyl = sampled_field[1 + moverParam->DFIELD_3or4];
-        commonType &Ezl = sampled_field[2 + moverParam->DFIELD_3or4];
-        const int num_field_components = 2 * moverParam->DFIELD_3or4;
+        commonType &Exl = sampled_field[3];
+        commonType &Eyl = sampled_field[4];
+        commonType &Ezl = sampled_field[5];
+
+        // target previous cell
+        const int previousIndex = (cx * (grid->nyn - 1) + cy) * grid->nzn + cz; // previous cell index
+
+        assert(previousIndex < 24 * (grid->nzn * (grid->nyn - 1) * (grid->nxn - 1)));
+
         for (int c = 0; c < 8; c++) // grid node
         {
-            const commonType *field_components_c = field_components[c];
-            const commonType weights_c = weights[c];
+            // 4 from previous and 4 from itself
 
-            for (int i = 0; i < num_field_components; i++) // field items
+            for (int i = 0; i < 6; i++) // field items
             {
-                sampled_field[i] += weights_c * field_components_c[i];
+                sampled_field[i] += weights[c] * fieldForPcls[previousIndex * 24 + c * 6 + i];
             }
         }
         const commonType Omx = qdto2mc * Bxl;
