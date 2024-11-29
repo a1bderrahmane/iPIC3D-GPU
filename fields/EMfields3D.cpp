@@ -3029,6 +3029,58 @@ void EMfields3D::set_fieldForPcls()
   }
 }
 
+/**
+ * @brief field for a cell, optimized for GPU memory access
+ * @details each cell has 6 fields on 8 grid points
+ *        for this GPU optimized buffer, store data from 4 grid points in this cell
+ *        which can be used by it self and the next cell
+ *        the overhead is smaller than 3 times of the original buffer
+ * 
+ * @param fieldForPclsOnCenter field buffer for particles, (nxn-1)*(nyn-1)*(nzn)*4*6
+ */
+void EMfields3D::set_fieldForPclsToCenter(cudaCommonType *fieldForPclsOnCenter)
+{
+  #pragma omp parallel for collapse(3)
+  for(int i=0;i<nxn - 1;i++)
+  for(int j=0;j<nyn - 1;j++)
+  for(int k=0;k<nzn;k++) // additional cell for the head
+  {
+    const auto cellIndex = (i * (nyn - 1) + j) * nzn + k;
+    // grid point (i, j, k)
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 0] = (cudaCommonType) (Bxn[i][j][k] + Bx_ext[i][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 1] = (cudaCommonType) (Byn[i][j][k] + By_ext[i][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 2] = (cudaCommonType) (Bzn[i][j][k] + Bz_ext[i][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 3] = (cudaCommonType) Ex[i][j][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 4] = (cudaCommonType) Ey[i][j][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 5] = (cudaCommonType) Ez[i][j][k];
+
+    // grid point (i+1, j, k)
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 0] = (cudaCommonType) (Bxn[i+1][j][k] + Bx_ext[i+1][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 1] = (cudaCommonType) (Byn[i+1][j][k] + By_ext[i+1][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 2] = (cudaCommonType) (Bzn[i+1][j][k] + Bz_ext[i+1][j][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 3] = (cudaCommonType) Ex[i+1][j][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 4] = (cudaCommonType) Ey[i+1][j][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 5] = (cudaCommonType) Ez[i+1][j][k];
+
+    // grid point (i+1, j+1, k)
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 0] = (cudaCommonType) (Bxn[i+1][j+1][k] + Bx_ext[i+1][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 1] = (cudaCommonType) (Byn[i+1][j+1][k] + By_ext[i+1][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 2] = (cudaCommonType) (Bzn[i+1][j+1][k] + Bz_ext[i+1][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 3] = (cudaCommonType) Ex[i+1][j+1][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 4] = (cudaCommonType) Ey[i+1][j+1][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 5] = (cudaCommonType) Ez[i+1][j+1][k];
+
+    // grid point (i, j+1, k)
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 0] = (cudaCommonType) (Bxn[i][j+1][k] + Bx_ext[i][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 1] = (cudaCommonType) (Byn[i][j+1][k] + By_ext[i][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 2] = (cudaCommonType) (Bzn[i][j+1][k] + Bz_ext[i][j+1][k]);
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 3] = (cudaCommonType) Ex[i][j+1][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 4] = (cudaCommonType) Ey[i][j+1][k];
+    fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 5] = (cudaCommonType) Ez[i][j+1][k];
+    
+  }
+}
+
 /*! Calculate Magnetic field with the implicit solver: calculate B defined on nodes With E(n+ theta) computed, the magnetic field is evaluated from Faraday's law */
 void EMfields3D::calculateB()
 {
