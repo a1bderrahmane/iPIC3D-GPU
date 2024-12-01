@@ -53,6 +53,11 @@ option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake ca
 
 include(GNUInstallDirs)
 
+# set directories
+set(SOURCE_CODE_DIR src/ipic3d)
+set(INCLUDE_CODE_DIR src/include)
+
+
 # Find ParaView
 if(USE_CATALYST)
   find_package(ParaView 5.7 REQUIRED)
@@ -64,13 +69,13 @@ if(USE_CATALYST)
       "different build of ParaView) with PARAVIEW_ENABLE_CATALYST and "
       "PARAVIEW_ENABLE_PYTHON set to TRUE")
   else()
-    add_library(iPICAdaptor ${CMAKE_SOURCE_DIR}/catalyst/Adaptor.cxx)
+    add_library(iPICAdaptor ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst/Adaptor.cxx)
     if (BUILD_SHARED_LIBS)
       install(TARGETS iPICAdaptor)
     endif()
 
     target_link_libraries(iPICAdaptor PRIVATE ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
-    target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/catalyst)
+    target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst)
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
   endif()
@@ -120,25 +125,25 @@ endif()
 file(
   GLOB
   src_files
-  ConfigFile/src/*.cpp
-  PSKOutput3D/*.cpp
-  bc/*.cpp
-  communication/*.cpp
-  fields/*.cpp
-  grids/*.cpp
-  inputoutput/*.cpp
-  mathlib/*.cpp
+  ${SOURCE_CODE_DIR}/ConfigFile/src/*.cpp
+  ${SOURCE_CODE_DIR}/PSKOutput3D/*.cpp
+  ${SOURCE_CODE_DIR}/bc/*.cpp
+  ${SOURCE_CODE_DIR}/communication/*.cpp
+  ${SOURCE_CODE_DIR}/fields/*.cpp
+  ${SOURCE_CODE_DIR}/grids/*.cpp
+  ${SOURCE_CODE_DIR}/inputoutput/*.cpp
+  ${SOURCE_CODE_DIR}/mathlib/*.cpp
+  ${SOURCE_CODE_DIR}/particles/*.cpp
+  ${SOURCE_CODE_DIR}/performances/*.cpp
+  ${SOURCE_CODE_DIR}/solvers/*.cpp
+  ${SOURCE_CODE_DIR}/utility/*.cpp
+  ${SOURCE_CODE_DIR}/main/*.cpp
   mpidata/*.cpp
-  particles/*.cpp
-  performances/*.cpp
   processtopology/*.cpp
-  solvers/*.cpp
-  utility/*.cpp
-  main/*.cpp
   )
 # CUDA source files
 if(CUDA_ON)
-  file(GLOB cuda_src_files cudaKernel/*.cu main/*.cu)
+  file(GLOB cuda_src_files ${SOURCE_CODE_DIR}/cudaKernel/*.cu ${SOURCE_CODE_DIR}/main/*.cu)
   if(HIP_ON)
     set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
   endif()
@@ -173,14 +178,14 @@ elseif(CUDA_ON)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
-set(include_path include)
+set(include_path ${INCLUDE_CODE_DIR})
 # CUDA header files
 if(CUDA_ON)
-  list(APPEND include_path include/CUDA)
+  list(APPEND include_path ${INCLUDE_CODE_DIR}/CUDA)
   if(NOT HIP_ON)
     list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
   else()
-    list(APPEND include_path hip)
+    list(APPEND include_path ${INCLUDE_CODE_DIR}/hip)
   endif()
 endif()
 target_include_directories(
@@ -256,7 +261,7 @@ endif()
 # Particle solver
 add_executable(
   iPIC3D
-  iPIC3D.cpp
+  ${SOURCE_CODE_DIR}/iPIC3D.cpp
   )
 
 target_link_libraries(
@@ -309,7 +314,7 @@ add_install_libdir_to_rpath(iPIC3D)
 
 install(TARGETS iPIC3D)
 
-add_subdirectory(inputfiles)
+add_subdirectory(share/inputfiles)
 
 message("Which system am I compiling for:")
 message("MYHOSTNAME is ${myhostname}")
