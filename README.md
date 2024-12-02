@@ -1,6 +1,7 @@
-# iPIC3D-CUDA
+# iPIC3D-CUDA(HIP)
 
-> iPIC3D with CUDA acceleration, supporting multi-node multi-GPU.
+> iPIC3D with CUDA acceleration, supporting multi-node multi-GPU.  
+> Now AMD GPUs are supported via HIP!
 ```                                                                       
           ,-.----.                           .--,-``-.                   
           \    /  \      ,---,   ,----..    /   /     '.       ,---,     
@@ -55,6 +56,12 @@ mkdir build && cd build
 cmake ..
 ```
 
+If you's like to use HIP, please switch a CMake Option in [CMakeLists.txt](./CMakeLists.txt):
+
+``` cmake 
+option(HIP_ON "Use HIP" ON) # Set it to OFF if you want to use CUDA
+```
+
 
 - Compile with `make` if successful, you will find an executable named `iPIC3D` in build directory
 ``` shell
@@ -68,10 +75,11 @@ make -j # build with max threads, fast, recommended
 iPIC3D uses inputfiles to control the simulation, we pass this text file as the only command line argument:
 
 ``` shell
-mpirun -np 16 ./iPIC3D ../inputfiles/testGEM2Dreal.inp
+export OMP_NUM_THREADS=2
+mpirun -np 8 ./iPIC3D ../share/inputfiles/magneticReconnection/testGEM3Dsmall.inp
 ```
 
-With this command, you are using 16 MPI processes with the setup `../inputfiles/testGEM2Dreal.inp`.
+With this command, you are using 8 MPI ranks, 2 OpenMP threads per rank.
 
 **Important:** make sure `number of MPI process = XLEN x YLEN x ZLEN` as specified in the input file.
 
@@ -87,10 +95,10 @@ It's recommended to use more than 1 MPI process per GPU. The following example u
 
 ``` shell
 # 1 MPI process per GPU
-srun --nodes=4 --ntasks=16 --ntasks-per-node=4 ./iPIC3D ../benchmark/GEM3Dsmall_4x2x2_100/testGEM3Dsmall.inp 
+srun --nodes=4 --ntasks=16 --ntasks-per-node=4 ./iPIC3D ../share/benchmark/GEM3Dsmall_4x2x2_100/testGEM3Dsmall.inp 
 
 # 2 MPI processes per GPU
-srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../benchmark/GEM3Dsmall_4x4x2_100/testGEM3Dsmall.inp  
+srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../share/benchmark/GEM3Dsmall_4x4x2_100/testGEM3Dsmall.inp  
 ```
 
 

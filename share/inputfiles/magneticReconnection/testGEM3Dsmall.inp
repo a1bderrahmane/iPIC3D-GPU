@@ -33,7 +33,7 @@ delta = 0.5
     
 #  %%%%%%%%%%%%%%%%%%% TIME %%%%%%%%%%%%%%%%%%
 dt = 0.15          # dt = time step   
-ncycles = 100    # cycles
+ncycles = 200    # cycles
 th = 1.0          # th =   decentering parameter
 c = 1.0
 
@@ -49,9 +49,9 @@ nzc = 64  # nzc = number of cells - z direction
 
 # %%%%%%%%%%%%%% MPI TOPOLOGY %%%%%%%%%%%%%%
 # number of MPI subdomains in each direction
-XLEN = 8
-YLEN = 8
-ZLEN = 4
+XLEN = 2
+YLEN = 2
+ZLEN = 2
 # topology of subdomains in each dimension (1=true, 0=false)
 PERIODICX = 1
 PERIODICY = 0
