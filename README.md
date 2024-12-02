@@ -1,7 +1,6 @@
 # iPIC3D-CUDA(HIP)
 
-> iPIC3D with CUDA acceleration, supporting multi-node multi-GPU.  
-> Now AMD GPUs are supported via HIP!
+> iPIC3D with GPU acceleration, supporting multi-node multi-GPU.
 ```                                                                       
           ,-.----.                           .--,-``-.                   
           \    /  \      ,---,   ,----..    /   /     '.       ,---,     
@@ -26,8 +25,8 @@ Markidis, Stefano, and Giovanni Lapenta. "Multi-scale simulations of plasma with
 ## Usage
 
 ### Requirement
-To install and run iPIC3D-CUDA, you need: 
-- CUDA compatible hardware, CUDA capabiliy 7.5 or higher 
+To install and run iPIC3D-GPU, you need: 
+- CUDA/HIP compatible hardware, CUDA capabiliy 7.5 or higher 
 - cmake, MPI(MPICH and OpenMPI are tested) and HDF5 (optional), C/C++ compiler supporting C++ 17 standard
 
 **To meet the requirements of compatability between CUDA and compiler, it's recommended to use a relatively new compiler version e.g. GCC 12**
@@ -104,7 +103,7 @@ srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../share/benchmark/GEM3D
 
 ### Result
 
-This iPIC3D-CUDA will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
+This iPIC3D-GPU will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
 
 
 ## Build Options
@@ -123,7 +122,7 @@ cmake -DCMAKE_BUILD_TYPE=Default ..
 
 ### OpenMP
 
-In this iPIC3D-CUDA, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
+In this iPIC3D-GPU, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
 
 To speedup the CPU part, the OpenMP is enabled by default:
 ``` shell
