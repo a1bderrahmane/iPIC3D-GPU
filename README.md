@@ -1,7 +1,6 @@
-# iPIC3D-CUDA(HIP)
+# iPIC3D-GPU
 
-> iPIC3D with CUDA acceleration, supporting multi-node multi-GPU.  
-> Now AMD GPUs are supported via HIP!
+> iPIC3D with GPU acceleration, supporting multi-node multi-GPU.
 ```                                                                       
           ,-.----.                           .--,-``-.                   
           \    /  \      ,---,   ,----..    /   /     '.       ,---,     
@@ -26,8 +25,8 @@ Markidis, Stefano, and Giovanni Lapenta. "Multi-scale simulations of plasma with
 ## Usage
 
 ### Requirement
-To install and run iPIC3D-CUDA, you need: 
-- CUDA compatible hardware, CUDA capabiliy 7.5 or higher 
+To install and run iPIC3D-GPU, you need: 
+- CUDA/HIP compatible hardware, CUDA capabiliy 7.5 or higher 
 - cmake, MPI(MPICH and OpenMPI are tested) and HDF5 (optional), C/C++ compiler supporting C++ 17 standard
 
 **To meet the requirements of compatability between CUDA and compiler, it's recommended to use a relatively new compiler version e.g. GCC 12**
@@ -53,13 +52,14 @@ mkdir build && cd build
 - Use `CMake` to generate the make files
 ``` shell
 # use .. here because CMakeList.txt would be under project root 
-cmake ..
+cmake .. # using CUDA by default
+cmake -DHIP_ON=ON .. # use HIP
 ```
 
-If you's like to use HIP, please switch a CMake Option in [CMakeLists.txt](./CMakeLists.txt):
+If you's like to use HIP, notice the GPU architecture in [CMakeLists.txt](./CMakeLists.txt), change it according to your hardware to get bet performance:
 
 ``` cmake 
-option(HIP_ON "Use HIP" ON) # Set it to OFF if you want to use CUDA
+set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a) 
 ```
 
 
@@ -91,7 +91,7 @@ If you are on a super-computer, especially a multi-node system, it's likely that
 
 Assigning MPI processes to nodes and GPUs are vital in performance, for it decides the pipeline and subdomains in the program.
 
-It's recommended to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
+It's fine to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
 
 ``` shell
 # 1 MPI process per GPU
@@ -104,7 +104,7 @@ srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../share/benchmark/GEM3D
 
 ### Result
 
-This iPIC3D-CUDA will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
+This iPIC3D-GPU will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
 
 
 ## Build Options
@@ -123,7 +123,7 @@ cmake -DCMAKE_BUILD_TYPE=Default ..
 
 ### OpenMP
 
-In this iPIC3D-CUDA, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
+In this iPIC3D-GPU, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
 
 To speedup the CPU part, the OpenMP is enabled by default:
 ``` shell
