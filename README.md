@@ -1,4 +1,4 @@
-# iPIC3D-CUDA(HIP)
+# iPIC3D-GPU
 
 > iPIC3D with GPU acceleration, supporting multi-node multi-GPU.
 ```                                                                       
@@ -52,13 +52,14 @@ mkdir build && cd build
 - Use `CMake` to generate the make files
 ``` shell
 # use .. here because CMakeList.txt would be under project root 
-cmake ..
+cmake .. # using CUDA by default
+cmake -DHIP_ON=ON .. # use HIP
 ```
 
-If you's like to use HIP, please switch a CMake Option in [CMakeLists.txt](./CMakeLists.txt):
+If you's like to use HIP, notice the GPU architecture in [CMakeLists.txt](./CMakeLists.txt), change it according to your hardware to get bet performance:
 
 ``` cmake 
-option(HIP_ON "Use HIP" ON) # Set it to OFF if you want to use CUDA
+set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a) 
 ```
 
 
@@ -90,7 +91,7 @@ If you are on a super-computer, especially a multi-node system, it's likely that
 
 Assigning MPI processes to nodes and GPUs are vital in performance, for it decides the pipeline and subdomains in the program.
 
-It's recommended to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
+It's fine to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
 
 ``` shell
 # 1 MPI process per GPU
