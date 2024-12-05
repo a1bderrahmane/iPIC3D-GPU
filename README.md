@@ -138,18 +138,19 @@ The solver on CPU will be benefited from OpenMP now, and this option is ON by de
 
 ## Tool
 
-### Benchmark[Old Data]
+### Benchmark
 In [benchmark](./share/benchmark/) folder, we prepared some scripts for profiling, please read the [benchmark/readme](./share/benchmark/readme.md) for more infomation.
 
-What's more, there're two performance baseline files for your reference:
+There's a performance baseline file for your reference, 2 threads per process is used:
 
 ![GH200](./Documentation/image/GH200_release_baseline.png)
 
-![dual-A100](./Documentation/image/dual_A100_release_baseline.png)
+<!-- ![dual-A100](./Documentation/image/dual_A100_release_baseline.png) -->
 
-You can find the corresponding data at [./benchmark/GH200_release_baseline.csv](./benchmark/GH200_release_baseline.csv) and [./benchmark/Dual-A100_release_baseline.csv](./benchmark/Dual-A100_release_baseline.csv). 
+You can find the corresponding data at [./share/benchmark/GH200_release_baseline.csv](./share/benchmark/GH200_release_baseline.csv).
+ <!-- and [./benchmark/Dual-A100_release_baseline.csv](./benchmark/Dual-A100_release_baseline.csv).  -->
 
-Please note that the `Particle` and `Moments` parts are not exactly the time consumption of these two parts, as the kernels are interwaved in this version. The sum of the two parts are precise, though.
+<!-- Please note that the `Particle` and `Moments` parts are not exactly the time consumption of these two parts, as the kernels are interwaved in this version. The sum of the two parts are precise, though. -->
 
 
 ## Contact
