@@ -411,6 +411,9 @@ int c_Solver::initCUDA(){
 
   cudaErrChk(cudaHostAlloc((void**)&fieldForPclHostPtr, fieldSize * 24 * sizeof(cudaCommonType), 0));
 
+  threadPoolPtr = new ThreadPool(ns);
+  cudaErrChk(cudaEventCreateWithFlags(&event0, cudaEventDisableTiming));
+
   cudaDeviceSynchronize();
 
   if(MPIdata::get_rank() == 0)std::cout << "CUDA Init finished" << std::endl;
@@ -421,6 +424,10 @@ int c_Solver::initCUDA(){
 
 
 int c_Solver::deInitCUDA(){
+
+  cudaEventDestroy(event0);
+
+  delete threadPoolPtr;
 
   deleteHostPinnedObject(grid3DCUDAHostPtr);
   cudaFree(grid3DCUDACUDAPtr);
@@ -627,6 +634,7 @@ int c_Solver::cudaLauncherAsync(const int species){
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
 
   // Mover
+  cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
   moverKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
   cudaErrChk(cudaEventRecord(event1, streams[species]));
   // Moment stayed
@@ -741,12 +749,10 @@ bool c_Solver::ParticlesMover()
     //! copy fieldForPcls to device, for every species 
     //cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, (void*)&(EMf->get_fieldForPcls().get(0,0,0,0)), gridSize*8*sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
     cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, fieldForPclHostPtr, (grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1)) * 24 * sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
-    cudaErrChk(cudaStreamSynchronize(streams[0]));
-
+    cudaErrChk(cudaEventRecord(event0, streams[0]));
     std::future<int> results[ns];
     for(int i=0; i<ns; i++){
-      //part[i].get_pcl_array().clear(); // clear the host pclArray
-      results[i] = std::async(&c_Solver::cudaLauncherAsync, this, i);
+      results[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
     }
 
     for (int i = 0; i < ns; i++){ //  it can be better

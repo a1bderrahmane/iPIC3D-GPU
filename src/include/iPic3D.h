@@ -46,6 +46,7 @@ class OutputWrapperFPP;
 #include "particleArrayCUDA.cuh"
 #include "gridCUDA.cuh"
 #include "particleExchange.cuh"
+#include "threadPool.hpp"
 #endif
 
 namespace iPic3D {
@@ -152,7 +153,9 @@ namespace iPic3D {
 
     cudaTypeArray1<cudaCommonType> fieldForPclHostPtr;
     
+    ThreadPool *threadPoolPtr;
 
+    cudaEvent_t event0;
 #endif
 
 
