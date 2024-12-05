@@ -31,7 +31,7 @@ for dir in */; do
         for dimension in "${dimensions[@]}"; do
             product=$((product * dimension))
         done
-
+        export OMP_NUM_THREADS=2
         mpirun -np "$product" ../build/iPIC3D ./*.inp > "$logFile" 2>&1
         if [ $? -ne 0 ]; then
             echo "  [!]Failed"
