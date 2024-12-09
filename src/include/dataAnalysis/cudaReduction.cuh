@@ -12,12 +12,12 @@ namespace cudaReduction
 
 template <typename T, unsigned int blockSize>
 __device__ void warpReduceMax(volatile T* sdata, unsigned int tid) {
-    if (blockSize >= 64) sdata[tid] = max(sdata[tid], sdata[tid + 32]);
-    if (blockSize >= 32) sdata[tid] = max(sdata[tid], sdata[tid + 16]);
-    if (blockSize >= 16) sdata[tid] = max(sdata[tid], sdata[tid + 8]);
-    if (blockSize >= 8) sdata[tid] = max(sdata[tid], sdata[tid + 4]);
-    if (blockSize >= 4) sdata[tid] = max(sdata[tid], sdata[tid + 2]);
-    if (blockSize >= 2) sdata[tid] = max(sdata[tid], sdata[tid + 1]);
+    if constexpr (blockSize >= 64) sdata[tid] = max(sdata[tid], sdata[tid + 32]);
+    if constexpr (blockSize >= 32) sdata[tid] = max(sdata[tid], sdata[tid + 16]);
+    if constexpr (blockSize >= 16) sdata[tid] = max(sdata[tid], sdata[tid + 8]);
+    if constexpr (blockSize >= 8) sdata[tid] = max(sdata[tid], sdata[tid + 4]);
+    if constexpr (blockSize >= 4) sdata[tid] = max(sdata[tid], sdata[tid + 2]);
+    if constexpr (blockSize >= 2) sdata[tid] = max(sdata[tid], sdata[tid + 1]);
 }
 
 
@@ -48,9 +48,9 @@ __global__ void reduceMax(T* g_idata, T* g_odata, unsigned int n) {
     __syncthreads();
 
 
-    if (blockSize >= 512) { if (tid < 256) { sdata[tid] = max(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
-    if (blockSize >= 256) { if (tid < 128) { sdata[tid] = max(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
-    if (blockSize >= 128) { if (tid < 64) { sdata[tid] = max(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
+    if constexpr (blockSize >= 512) { if (tid < 256) { sdata[tid] = max(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
+    if constexpr (blockSize >= 256) { if (tid < 128) { sdata[tid] = max(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
+    if constexpr (blockSize >= 128) { if (tid < 64) { sdata[tid] = max(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
     if (tid < 32) warpReduceMax<T, blockSize>(sdata, tid);
 
 
@@ -81,9 +81,9 @@ __global__ void reduceMaxWarp(T* g_idata, T* g_odata, unsigned int n) {
         maxValue = max(maxValue, g_idata[i]);
     }
 
-    constexpr unsigned int fullMask = 0xffffffff;
+    constexpr unsigned int fullMask = 0xffffffff; // HIP requires uint64 mask
     // warp reduction
-    for(int offset = 16; offset > 0; offset /= 2){
+    for(int offset = warpSize / 2; offset > 0; offset /= 2){
         const T tempValue = __shfl_down_sync(fullMask, maxValue, offset);
         maxValue = max(maxValue, tempValue);
     }
@@ -96,12 +96,12 @@ __global__ void reduceMaxWarp(T* g_idata, T* g_odata, unsigned int n) {
 
 template <typename T, unsigned int blockSize>
 __device__ void warpReduceMin(volatile T* sdata, unsigned int tid) {
-    if (blockSize >= 64) sdata[tid] = min(sdata[tid], sdata[tid + 32]);
-    if (blockSize >= 32) sdata[tid] = min(sdata[tid], sdata[tid + 16]);
-    if (blockSize >= 16) sdata[tid] = min(sdata[tid], sdata[tid + 8]);
-    if (blockSize >= 8) sdata[tid] = min(sdata[tid], sdata[tid + 4]);
-    if (blockSize >= 4) sdata[tid] = min(sdata[tid], sdata[tid + 2]);
-    if (blockSize >= 2) sdata[tid] = min(sdata[tid], sdata[tid + 1]);
+    if constexpr (blockSize >= 64) sdata[tid] = min(sdata[tid], sdata[tid + 32]);
+    if constexpr (blockSize >= 32) sdata[tid] = min(sdata[tid], sdata[tid + 16]);
+    if constexpr (blockSize >= 16) sdata[tid] = min(sdata[tid], sdata[tid + 8]);
+    if constexpr (blockSize >= 8) sdata[tid] = min(sdata[tid], sdata[tid + 4]);
+    if constexpr (blockSize >= 4) sdata[tid] = min(sdata[tid], sdata[tid + 2]);
+    if constexpr (blockSize >= 2) sdata[tid] = min(sdata[tid], sdata[tid + 1]);
 }
 
 template <typename T, unsigned int blockSize>
@@ -122,9 +122,9 @@ __global__ void reduceMin(T* g_idata, T* g_odata, unsigned int n) {
 
     __syncthreads();
 
-    if (blockSize >= 512) { if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
-    if (blockSize >= 256) { if (tid < 128) { sdata[tid] = min(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
-    if (blockSize >= 128) { if (tid < 64) { sdata[tid] = min(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
+    if constexpr (blockSize >= 512) { if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
+    if constexpr (blockSize >= 256) { if (tid < 128) { sdata[tid] = min(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
+    if constexpr (blockSize >= 128) { if (tid < 64) { sdata[tid] = min(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
     if (tid < 32) warpReduceMin<T, blockSize>(sdata, tid);
 
     if (tid == 0) g_odata[blockIdx.x] = sdata[0];
@@ -148,7 +148,7 @@ __global__ void reduceMinWarp(T* g_idata, T* g_odata, unsigned int n) {
 
     constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
-    for(int offset = 16; offset > 0; offset /= 2){
+    for(int offset = warpSize / 2; offset > 0; offset /= 2){
         const T tempValue = __shfl_down_sync(fullMask, minValue, offset);
         minValue = min(minValue, tempValue);
     }
@@ -162,12 +162,12 @@ __global__ void reduceMinWarp(T* g_idata, T* g_odata, unsigned int n) {
 
 template <typename T, unsigned int blockSize>
 __device__ void warpReduceSum(volatile T* sdata, unsigned int tid) {
-    if (blockSize >= 64) sdata[tid] += sdata[tid + 32];
-    if (blockSize >= 32) sdata[tid] += sdata[tid + 16];
-    if (blockSize >= 16) sdata[tid] += sdata[tid + 8];
-    if (blockSize >= 8) sdata[tid] += sdata[tid + 4];
-    if (blockSize >= 4) sdata[tid] += sdata[tid + 2];
-    if (blockSize >= 2) sdata[tid] += sdata[tid + 1];
+    if constexpr (blockSize >= 64) sdata[tid] += sdata[tid + 32];
+    if constexpr (blockSize >= 32) sdata[tid] += sdata[tid + 16];
+    if constexpr (blockSize >= 16) sdata[tid] += sdata[tid + 8];
+    if constexpr (blockSize >= 8) sdata[tid] += sdata[tid + 4];
+    if constexpr (blockSize >= 4) sdata[tid] += sdata[tid + 2];
+    if constexpr (blockSize >= 2) sdata[tid] += sdata[tid + 1];
 }
 
 
@@ -197,9 +197,9 @@ __global__ void reduceSum(T* g_idata, T* g_odata, unsigned int n) {
 
     __syncthreads();
 
-    if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
-    if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
-    if (blockSize >= 128) { if (tid < 64) { sdata[tid] += sdata[tid + 64]; } __syncthreads(); }
+    if constexpr (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
+    if constexpr (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
+    if constexpr (blockSize >= 128) { if (tid < 64) { sdata[tid] += sdata[tid + 64]; } __syncthreads(); }
     if (tid < 32) warpReduceSum<T, blockSize>(sdata, tid);
 
     if (tid == 0) g_odata[blockIdx.x] = sdata[0];
@@ -230,7 +230,7 @@ __global__ void reduceSumWarp(T* g_idata, T* g_odata, unsigned int n) {
 
     constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
-    for(int offset = 16; offset > 0; offset /= 2){
+    for(int offset = warpSize / 2; offset > 0; offset /= 2){
         sumValue += __shfl_down_sync(fullMask, sumValue, offset);
     }
 
@@ -311,9 +311,9 @@ __global__ void reduceSumPreProcess(T* g_idata, T* g_odata, unsigned int n, U* p
 
     __syncthreads();
 
-    if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
-    if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
-    if (blockSize >= 128) { if (tid < 64) { sdata[tid] += sdata[tid + 64]; } __syncthreads(); }
+    if constexpr (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
+    if constexpr (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
+    if constexpr (blockSize >= 128) { if (tid < 64) { sdata[tid] += sdata[tid + 64]; } __syncthreads(); }
     if (tid < 32) warpReduceSum<T, blockSize>(sdata, tid);
 
     if (tid == 0) g_odata[blockIdx.x] = sdata[0];
@@ -337,7 +337,7 @@ __global__ void reduceSumWarpPostProcess(T* g_idata, T* g_odata, unsigned int n,
 
     constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
-    for(int offset = 16; offset > 0; offset /= 2){
+    for(int offset = warpSize / 2; offset > 0; offset /= 2){
         sumValue += __shfl_down_sync(fullMask, sumValue, offset);
     }
 
