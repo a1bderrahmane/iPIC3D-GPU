@@ -95,12 +95,12 @@ __host__ int velocityHistogram::getRange(velocitySoA* pclArray, cudaStream_t str
     for(int i=0; i<3; i++){ // UVW
         reduceMin<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
             (pclArray->getElement(i), reductionTempArrayCUDA + i * reductionTempArraySize, pclArray->getNOP());
-        reduceMinWarp<histogramTypeIn><<<1, 32, 0, stream>>>
+        reduceMinWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
             (reductionTempArrayCUDA + i * reductionTempArraySize, reductionMinResultCUDA + i, blockNum);
 
         reduceMax<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
             (pclArray->getElement(i), reductionTempArrayCUDA + (i+3) * reductionTempArraySize, pclArray->getNOP());
-        reduceMaxWarp<histogramTypeIn><<<1, 32, 0, stream>>>
+        reduceMaxWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
             (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
     }
 
