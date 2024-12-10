@@ -372,8 +372,9 @@ public:
 private:
 
     int reduceBlockNum(int dataSize, int blockSize){
-        if(dataSize < 4096)dataSize = 4096;
-        auto blockNum = getGridSize(dataSize / 4096, blockSize); // 4096 elements per thread
+        constexpr int elementPerThread = 8; // 8 elements per thread, as the input is 10000
+        if(dataSize < elementPerThread)dataSize = elementPerThread;
+        auto blockNum = getGridSize(dataSize / elementPerThread, blockSize); 
         blockNum = blockNum > 1024 ? 1024 : blockNum;
 
         if(reductionTempArraySize < blockNum){
