@@ -93,8 +93,8 @@ __global__ void velocityHistogramKernelOne(int nop, histogramTypeIn* d1, histogr
     const auto histogramSize = histogramCUDAPtr[0].getLogicSize();
     auto gHistogram = histogramCUDAPtr[0].getHistogramCUDA();
 
-    if(threadIdx.x < warpSize){
-        for(int i = threadIdx.x; i < histogramSize; i += warpSize){
+    if(threadIdx.x < WARP_SIZE){
+        for(int i = threadIdx.x; i < histogramSize; i += WARP_SIZE){
             atomicAdd(&gHistogram[i], sHistogram[i]);
         }
     }

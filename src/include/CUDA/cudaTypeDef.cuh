@@ -4,10 +4,12 @@
 #ifndef HIPIFLY
 #include <cuda.h>
 #include "cuda_fp16.h"
+#define WARP_SIZE (32)
 #else
 #include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
 #include "hipifly.hpp"
+#define WARP_SIZE (64)
 #endif
 
 #include <iostream>

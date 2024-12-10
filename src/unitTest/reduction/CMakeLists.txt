@@ -10,7 +10,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 
 option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
-option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
+option(HIP_ON "Use HIP" ON) # Set it to OFF if you want to use CUDA
 
 if(NOT HIP_ON) # CUDA
     enable_language(CUDA)
@@ -20,7 +20,7 @@ if(NOT HIP_ON) # CUDA
 
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 
-elseif(HIP_ON and CUDA_ON) # HIP
+elseif(HIP_ON AND CUDA_ON) # HIP
     find_package(HIP REQUIRED)
     enable_language(HIP)
     message(STATUS "Using HIP environment.")
@@ -74,7 +74,7 @@ if(NOT HIP_ON) # CUDA
   set_property(TARGET reductionTest PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
   set_property(TARGET reductionTest PROPERTY LINK_OPTIONS -fno-lto)
 
-elseif(HIP_ON and CUDA_ON) # HIP
+elseif(HIP_ON AND CUDA_ON) # HIP
 
   target_link_libraries(reductionTest PRIVATE hip::device)
   target_link_libraries(reductionTest PRIVATE hip::host)
@@ -85,6 +85,30 @@ elseif(HIP_ON and CUDA_ON) # HIP
   set_property(TARGET reductionTest PROPERTY HIP_ARCHITECTURES gfx90a)
 
 endif()
+
+if (CUDA_ON)
+  target_compile_definitions(reductionTest PUBLIC CUDA_ON=true)
+
+  if(MOMENT_CUDA_ON)
+    target_compile_definitions(reductionTest PUBLIC MOMENT_CUDA_ON=true)
+  else()
+    target_compile_definitions(reductionTest PUBLIC MOMENT_CUDA_ON=false)
+  endif()
+  if(MOVER_CUDA_ON)
+    target_compile_definitions(reductionTest PUBLIC MOVER_CUDA_ON=true)
+  else()
+    target_compile_definitions(reductionTest PUBLIC MOVER_CUDA_ON=false)
+  endif()
+
+  if(HIP_ON)
+  target_compile_definitions(reductionTest PUBLIC HIPIFLY)
+  endif()
+else()
+  target_compile_definitions(reductionTest PUBLIC CUDA_ON=false)
+  target_compile_definitions(reductionTest PUBLIC MOMENT_CUDA_ON=false)
+  target_compile_definitions(reductionTest PUBLIC MOVER_CUDA_ON=false)
+endif()
+
 
 # TEST
 

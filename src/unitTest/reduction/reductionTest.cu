@@ -53,7 +53,7 @@ int main(){
 
     // max
     cudaReduction::reduceMax<dataType, blockSize><<<blockNum, blockSize, blockSize * sizeof(dataType)>>>(deviceInput, reductionTemp, size);
-    cudaReduction::reduceMaxWarp<dataType><<<1, 32>>>(reductionTemp, deviceOutput, blockNum);
+    cudaReduction::reduceMaxWarp<dataType><<<1, WARP_SIZE>>>(reductionTemp, deviceOutput, blockNum);
     cudaErrChk(cudaMemcpy(&result, deviceOutput, sizeof(dataType), cudaMemcpyDeviceToHost));
     // cpu reduction
     dataType cpuMax = cpuReduceMax(data);
@@ -70,7 +70,7 @@ int main(){
 
     // min
     cudaReduction::reduceMin<dataType, blockSize><<<blockNum, blockSize, blockSize * sizeof(dataType)>>>(deviceInput, reductionTemp, size);
-    cudaReduction::reduceMinWarp<dataType><<<1, 32>>>(reductionTemp, deviceOutput, blockNum);
+    cudaReduction::reduceMinWarp<dataType><<<1, WARP_SIZE>>>(reductionTemp, deviceOutput, blockNum);
     cudaErrChk(cudaMemcpy(&result, deviceOutput, sizeof(dataType), cudaMemcpyDeviceToHost));
 
     // cpu reduction
