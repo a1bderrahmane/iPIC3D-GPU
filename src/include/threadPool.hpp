@@ -1,3 +1,6 @@
+#ifndef _THREAD_POOL_HPP_
+#define _THREAD_POOL_HPP_
+
 #include <vector>
 #include <queue>
 #include <thread>
@@ -65,3 +68,5 @@ private:
     std::condition_variable condition;
     std::atomic<bool> stop;
 };
+
+#endif // _THREAD_POOL_HPP_

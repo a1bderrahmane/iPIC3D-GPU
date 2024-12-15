@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include "threadPool.hpp"
+
 
 namespace dataAnalysis
 {
@@ -18,6 +20,7 @@ using namespace iPic3D;
 
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
 
+static ThreadPool DAthreadPool(4);
 
 /**
  * @brief analysis function for each species, uv, uw, vw
@@ -85,7 +88,7 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
 
     for(int i = 0; i < 3; i++){
         // launch 3 async threads for uv, uw, vw
-        future[i] = std::async(std::launch::async, GMMLambda, i);
+        future[i] = DAthreadPool.enqueue(GMMLambda, i); 
     }
 
     for(int i = 0; i < 3; i++){
@@ -139,8 +142,7 @@ std::future<int> startAnalysis(c_Solver& KCode, int cycle){
         return std::future<int>();
     }
 
-    std::future<int> analysisFuture = std::async(analysisEntre, std::ref(KCode), cycle);
-
+    std::future<int> analysisFuture = DAthreadPool.enqueue(analysisEntre, std::ref(KCode), cycle); 
     return analysisFuture;
 }
 
