@@ -422,6 +422,37 @@ int c_Solver::initCUDA(){
         throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
       }
     }
+    // VCT mapping for this subdomain
+    auto writeVctMapping = [this](const std::string& filePath) {
+      std::ofstream vctMapping(filePath);
+      if(vctMapping.is_open()){
+        vctMapping << "Cartesian rank: " << vct->getCartesian_rank() << std::endl;
+        vctMapping << "Number of processes: " << vct->getNprocs() << std::endl;
+        vctMapping << "XLEN: " << vct->getXLEN() << std::endl;
+        vctMapping << "YLEN: " << vct->getYLEN() << std::endl;
+        vctMapping << "ZLEN: " << vct->getZLEN() << std::endl;
+        vctMapping << "X: " << vct->getCoordinates(0) << std::endl;
+        vctMapping << "Y: " << vct->getCoordinates(1) << std::endl;
+        vctMapping << "Z: " << vct->getCoordinates(2) << std::endl;
+        vctMapping << "PERIODICX: " << vct->getPERIODICX() << std::endl;
+        vctMapping << "PERIODICY: " << vct->getPERIODICY() << std::endl;
+        vctMapping << "PERIODICZ: " << vct->getPERIODICZ() << std::endl;
+
+        vctMapping << "Neighbor X left: " << vct->getXleft_neighbor() << std::endl;
+        vctMapping << "Neighbor X right: " << vct->getXright_neighbor() << std::endl;
+        vctMapping << "Neighbor Y left: " << vct->getYleft_neighbor() << std::endl;
+        vctMapping << "Neighbor Y right: " << vct->getYright_neighbor() << std::endl;
+        vctMapping << "Neighbor Z left: " << vct->getZleft_neighbor() << std::endl;
+        vctMapping << "Neighbor Z right: " << vct->getZright_neighbor() << std::endl;
+
+        vctMapping.close();
+      } else {
+        throw std::runtime_error("[!]Error: Can not create VCT mapping for velocity GMM species");
+      }
+    };
+
+    writeVctMapping(GMMSubDomainOutputPath + "vctMapping.txt");
+
 
     auto histogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(myrank) + "/";
     for(int i = 0; i < ns; i++){
@@ -430,6 +461,7 @@ int c_Solver::initCUDA(){
         throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
       }
     }
+    writeVctMapping(histogramSubDomainOutputPath + "vctMapping.txt");
 
   }
 
