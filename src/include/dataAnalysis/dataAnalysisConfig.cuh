@@ -9,7 +9,8 @@ inline constexpr int DATA_ANALYSIS_EVERY_CYCLE = 50; // 0 to disable
 
 // Histogram configuration
 inline const std::string HISTOGRAM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityHistogram/";
-inline constexpr bool HISTOGRAM_FIXED_RANGE = true;
+inline constexpr bool HISTOGRAM_FIXED_RANGE = true; // edit the range in velocityHistogram::getRange
+inline constexpr bool HISTOGRAM_OUTPUT_3D = false; // the vtk file format, if false the 3 planes are on the same surface in paraview
 
 // GMM configuration
 inline const std::string GMM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityGMM/";

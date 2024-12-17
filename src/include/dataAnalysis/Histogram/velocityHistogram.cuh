@@ -11,6 +11,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "dataAnalysisConfig.cuh"
+
 
 namespace histogram{
 
@@ -413,9 +415,40 @@ public:
             vtkFile << "Velocity Histogram\n";
             vtkFile << "BINARY\n";  
             vtkFile << "DATASET STRUCTURED_POINTS\n";
-            vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
-            vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
-            vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";  
+
+            if constexpr (HISTOGRAM_OUTPUT_3D == true){
+
+                switch (i)
+                {
+                case 0: // UV
+                    vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
+                    vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
+                    vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";  
+                    break;
+
+                case 1: // VW
+                    vtkFile << "DIMENSIONS " << "1 " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << "\n";
+                    vtkFile << "ORIGIN " << "0 " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << "\n";
+                    vtkFile << "SPACING " << "1 " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << "\n";
+                    break;
+
+                case 2: // UW
+                    vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << "1 " << histogramHostPtr[i].size[1] << "\n";
+                    vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << "0 " << histogramHostPtr[i].getMin(1) << "\n";
+                    vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << "1 " << histogramHostPtr[i].getResolution(1) << "\n";
+                    break;
+                
+                default:
+                    break;
+                }
+
+            } else {
+                vtkFile << "DIMENSIONS " << histogramHostPtr[i].size[0] << " " << histogramHostPtr[i].size[1] << " 1\n";
+                vtkFile << "ORIGIN " << histogramHostPtr[i].getMin(0) << " " << histogramHostPtr[i].getMin(1) << " 0\n"; 
+                vtkFile << "SPACING " << histogramHostPtr[i].getResolution(0) << " " << histogramHostPtr[i].getResolution(1) << " 1\n";
+            }
+
+
             vtkFile << "POINT_DATA " << histogramHostPtr[i].getLogicSize() << "\n";  
             vtkFile << "SCALARS scalars float 1\n";  
             vtkFile << "LOOKUP_TABLE default\n";  
