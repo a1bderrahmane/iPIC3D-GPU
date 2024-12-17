@@ -4,6 +4,7 @@
 #include <iostream>
 #include "cudaTypeDef.cuh"
 #include "cudaReduction.cuh"
+#include "dataAnalysisConfig.cuh"
 
 
 namespace velocityHistogram
@@ -50,10 +51,10 @@ __global__ void velocityHistogramKernelOne(int nop, histogramTypeIn* d1, histogr
                                         velocityHistogramCUDA* histogramCUDAPtr);
 
 
-__host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, cudaStream_t stream){
+__host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, const int species, cudaStream_t stream){
     using namespace particleArraySoA;
     
-    getRange(pclArray, stream);
+    getRange(pclArray, species, stream);
     histogramUpdateKernel<<<1, 3, 0, stream>>>(reductionMinResultCUDA, reductionMaxResultCUDA, 
                                                 binThisDim[0], binThisDim[1], 
                                                 histogramCUDAPtr);
@@ -85,24 +86,35 @@ __host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, cudaS
     this->cycleNum = cycleNum;
 }
 
-__host__ int velocityHistogram::getRange(velocitySoA* pclArray, cudaStream_t stream){
+__host__ int velocityHistogram::getRange(velocitySoA* pclArray, const int species, cudaStream_t stream){
     using namespace cudaReduction;
 
     constexpr int blockSize = 256;
     auto blockNum = reduceBlockNum(pclArray->getNOP(), blockSize);
 
-    // std::cout << "nop: " << pclArray->getNOP() << std::endl;
-    for(int i=0; i<3; i++){ // UVW
-        reduceMin<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
-            (pclArray->getElement(i), reductionTempArrayCUDA + i * reductionTempArraySize, pclArray->getNOP());
-        reduceMinWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
-            (reductionTempArrayCUDA + i * reductionTempArraySize, reductionMinResultCUDA + i, blockNum);
+    if constexpr (HISTOGRAM_FIXED_RANGE == false){
+        for(int i=0; i<3; i++){ // UVW
+            reduceMin<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
+                (pclArray->getElement(i), reductionTempArrayCUDA + i * reductionTempArraySize, pclArray->getNOP());
+            reduceMinWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
+                (reductionTempArrayCUDA + i * reductionTempArraySize, reductionMinResultCUDA + i, blockNum);
 
-        reduceMax<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
-            (pclArray->getElement(i), reductionTempArrayCUDA + (i+3) * reductionTempArraySize, pclArray->getNOP());
-        reduceMaxWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
-            (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
+            reduceMax<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
+                (pclArray->getElement(i), reductionTempArrayCUDA + (i+3) * reductionTempArraySize, pclArray->getNOP());
+            reduceMaxWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
+                (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
+        }
+    }else{
+        histogramTypeIn min = species == 0 || species == 2 ? -0.2 : -0.09;
+        histogramTypeIn minArray[3] = {min, min, min};
+        histogramTypeIn max = species == 0 || species == 2 ? 0.2 : 0.09;
+        histogramTypeIn maxArray[3] = {max, max, max};
+
+        cudaErrChk(cudaMemcpyAsync(reductionMinResultCUDA, minArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
+        cudaErrChk(cudaMemcpyAsync(reductionMaxResultCUDA, maxArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
     }
+
+
 
     return 0;
 

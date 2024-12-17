@@ -84,6 +84,7 @@ __global__ void velocityHistogramKernelOne(int nop, histogramTypeIn* d1, histogr
         qAbs = abs(q[i] * 10e5); 
 
         const auto index = histogramCUDAPtr[0].getIndex(d1d2);
+        if(index < 0)continue;
         atomicAdd(&sHistogram[index], qAbs);
     }
 

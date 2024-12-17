@@ -263,7 +263,7 @@ private:
     /**
      * @brief get the Max and Min value of the given value set
      */
-    __host__ int getRange(velocitySoA* pclArray, cudaStream_t stream);
+    __host__ int getRange(velocitySoA* pclArray, const int species, cudaStream_t stream);
 
 public:
 
@@ -298,7 +298,7 @@ public:
      * @brief Initiate the kernels for histograming, launch the kernels
      * @details It can be invoked after Moment in the main loop, for the output and solver are on CPU
      */
-    __host__ void init(velocitySoA* pclArray, int cycleNum, cudaStream_t stream = 0);
+    __host__ void init(velocitySoA* pclArray, int cycleNum, const int species, cudaStream_t stream = 0);
 
 
     /**

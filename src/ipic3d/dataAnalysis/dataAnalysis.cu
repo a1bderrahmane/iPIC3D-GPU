@@ -124,7 +124,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
 
         // histogram
         auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        velocityHistogram.init(&velocitySoACUDA, cycle, KCode.streams[i]);
+        velocityHistogram.init(&velocitySoACUDA, cycle, i, KCode.streams[i]);
         velocityHistogram.writeToFileFloat(histogramSpeciesOutputPath, KCode.streams[i]);
 
         // GMM
@@ -141,7 +141,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
  */
 std::future<int> startAnalysis(c_Solver& KCode, int cycle){
 
-    if(cycle % DATA_ANALYSIS_EVERY_CYCLE != 0){
+    if(DATA_ANALYSIS_EVERY_CYCLE == 0 || (cycle % DATA_ANALYSIS_EVERY_CYCLE != 0)){
         return std::future<int>();
     }
 
