@@ -8,6 +8,7 @@
 namespace dataAnalysis
 {
 
+void createOutputDirectory(int myrank, int ns, VirtualTopology3D* vct);
 
 std::future<int> startAnalysis(iPic3D::c_Solver& KCode, int cycle);
 

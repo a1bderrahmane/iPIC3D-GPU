@@ -1,16 +1,19 @@
 
 #include <thread>
 #include <future>
-#include "iPic3D.h"
-#include "dataAnalysis.cuh"
+#include <string>
 
+#include "iPic3D.h"
+#include "VCtopology3D.h"
+#include "outputPrepare.h"
+#include "threadPool.hpp"
+
+#include "dataAnalysis.cuh"
+#include "dataAnalysisConfig.cuh"
 #include "GMM/cudaGMM.cuh"
 #include "particleArraySoACUDA.cuh"
 #include "velocityHistogram.cuh"
 
-#include <string>
-
-#include "threadPool.hpp"
 
 
 namespace dataAnalysis
@@ -108,8 +111,8 @@ int analysisEntre(c_Solver& KCode, int cycle){
     cudaErrChk(cudaSetDevice(KCode.cudaDeviceOnNode));
 
     // ./velocityGMM/subDomain0/species0/uv_1000.json , like this
-    static auto GMMSubDomainOutputPath = "./velocityGMM/subDomain" + std::to_string(KCode.myrank) + "/";
-    static auto HistogramSubDomainOutputPath = "./velocityHistogram/subDomain" + std::to_string(KCode.myrank) + "/";
+    static auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
+    static auto HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
 
     static auto velocitySoACUDA = velocitySoA();
     static auto velocityHistogram = velocityHistogram::velocityHistogram(12000);
@@ -138,7 +141,7 @@ int analysisEntre(c_Solver& KCode, int cycle){
  */
 std::future<int> startAnalysis(c_Solver& KCode, int cycle){
 
-    if(cycle % 50 != 0){
+    if(cycle % DATA_ANALYSIS_EVERY_CYCLE != 0){
         return std::future<int>();
     }
 
@@ -178,6 +181,57 @@ int waitForAnalysis(std::future<int>& analysisFuture){
     analysisFuture.wait();
 
     return 0;
+}
+
+void createOutputDirectory(int myrank, int ns, VirtualTopology3D* vct){ // output path for data analysis
+    auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+    for(int i = 0; i < ns; i++){
+        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+        if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
+        throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
+        }
+    }
+    // VCT mapping for this subdomain
+    auto writeVctMapping = [&](const std::string& filePath) {
+        std::ofstream vctMapping(filePath);
+        if(vctMapping.is_open()){
+        vctMapping << "Cartesian rank: " << vct->getCartesian_rank() << std::endl;
+        vctMapping << "Number of processes: " << vct->getNprocs() << std::endl;
+        vctMapping << "XLEN: " << vct->getXLEN() << std::endl;
+        vctMapping << "YLEN: " << vct->getYLEN() << std::endl;
+        vctMapping << "ZLEN: " << vct->getZLEN() << std::endl;
+        vctMapping << "X: " << vct->getCoordinates(0) << std::endl;
+        vctMapping << "Y: " << vct->getCoordinates(1) << std::endl;
+        vctMapping << "Z: " << vct->getCoordinates(2) << std::endl;
+        vctMapping << "PERIODICX: " << vct->getPERIODICX() << std::endl;
+        vctMapping << "PERIODICY: " << vct->getPERIODICY() << std::endl;
+        vctMapping << "PERIODICZ: " << vct->getPERIODICZ() << std::endl;
+
+        vctMapping << "Neighbor X left: " << vct->getXleft_neighbor() << std::endl;
+        vctMapping << "Neighbor X right: " << vct->getXright_neighbor() << std::endl;
+        vctMapping << "Neighbor Y left: " << vct->getYleft_neighbor() << std::endl;
+        vctMapping << "Neighbor Y right: " << vct->getYright_neighbor() << std::endl;
+        vctMapping << "Neighbor Z left: " << vct->getZleft_neighbor() << std::endl;
+        vctMapping << "Neighbor Z right: " << vct->getZright_neighbor() << std::endl;
+
+        vctMapping.close();
+        } else {
+        throw std::runtime_error("[!]Error: Can not create VCT mapping for velocity GMM species");
+        }
+    };
+
+    writeVctMapping(GMMSubDomainOutputPath + "vctMapping.txt");
+
+
+    auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+    for(int i = 0; i < ns; i++){
+        auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species" + std::to_string(i);
+        if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
+        throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
+        }
+    }
+    writeVctMapping(histogramSubDomainOutputPath + "vctMapping.txt");
+
 }
 
 
