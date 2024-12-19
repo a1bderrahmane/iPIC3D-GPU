@@ -92,7 +92,7 @@ __host__ int velocityHistogram::getRange(velocitySoA* pclArray, const int specie
     constexpr int blockSize = 256;
     auto blockNum = reduceBlockNum(pclArray->getNOP(), blockSize);
 
-    if constexpr (HISTOGRAM_FIXED_RANGE == false){
+    if(HISTOGRAM_FIXED_RANGE == false){
         for(int i=0; i<3; i++){ // UVW
             reduceMin<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
                 (pclArray->getElement(i), reductionTempArrayCUDA + i * reductionTempArraySize, pclArray->getNOP());
