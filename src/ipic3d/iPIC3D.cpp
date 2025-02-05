@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   KCode.Init(argc, argv); //! load param from file, init the grid, fields
 
   timeTasks.resetCycle(); //reset timer
-  KCode.CalculateMoments(true);
+  KCode.CalculateMoments();
   for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) {
 
     if (KCode.get_myrank() == 0)
@@ -44,16 +44,14 @@ int main(int argc, char **argv) {
 
     timeTasks.resetCycle();
     KCode.CalculateField(i); // E field
-    KCode.ParticlesMover(); //use the fields to calculate the new v and x for particles
+    KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
     KCode.CalculateB(); // B field
-    KCode.CalculateMoments(false); // the charge intense, current intense and pressure tensor, 
-    //calculated from particles position and celocity, then mapped to node(grid) for further solving
-    // some are mapped to cell center
+    KCode.CalculateMomentsAwait(); // wait for Mover and Moment kernels
     
     KCode.WriteOutput(i);
-    // print out total time for all tasks
+    
 #ifdef LOG_TASKS_TOTAL_TIME
-    timeTasks.print_cycle_times(i);
+    timeTasks.print_cycle_times(i); // print out total time for all tasks
 #endif
   }
 

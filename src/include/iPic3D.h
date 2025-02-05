@@ -76,10 +76,11 @@ namespace iPic3D {
     int initCUDA();
     int deInitCUDA();
     
-    void CalculateMoments(bool isInit);
+    void CalculateMoments();
+    void CalculateMomentsAwait();
     void CalculateField(int cycle);
     int cudaLauncherAsync(int species);
-    bool ParticlesMover();
+    bool ParticlesMoverMomentAsync();
     void CalculateB();
     //
     // output methods

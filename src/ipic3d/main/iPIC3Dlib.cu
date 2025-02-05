@@ -509,35 +509,43 @@ int c_Solver::deInitCUDA(){
 }
 
 
-void c_Solver::CalculateMoments(bool isInit) {
+void c_Solver::CalculateMoments() {
 
   timeTasks_set_main_task(TimeTasks::MOMENTS);
 
   // sum moments
-  if(isInit){
-    auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
-    for(int i=0; i<ns; i++){
-      cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[i], 0, gridSize*10*sizeof(cudaCommonType), streams[i]));  // set moments to 0
-      // copy the particles to device---- already there...by initliazation or Mover
-      // launch the moment kernel
-      momentKernelNew<<<(pclsArrayHostPtr[i]->getNOP()/256 + 1), 256, 0, streams[i] >>>(momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], 0);
-      // copy moments back to 10 densities
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getRHOns().get(i,0,0,0)),  momentsCUDAPtr[i]+0*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJxs().get(i,0,0,0)),    momentsCUDAPtr[i]+1*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJys().get(i,0,0,0)),    momentsCUDAPtr[i]+2*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJzs().get(i,0,0,0)),    momentsCUDAPtr[i]+3*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXXsn().get(i,0,0,0)),  momentsCUDAPtr[i]+4*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXYsn().get(i,0,0,0)),  momentsCUDAPtr[i]+5*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+6*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpYYsn().get(i,0,0,0)),  momentsCUDAPtr[i]+7*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpYZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+8*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
-      cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpZZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+9*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+  auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
+  for(int i=0; i<ns; i++){
+    cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[i], 0, gridSize*10*sizeof(cudaCommonType), streams[i]));  // set moments to 0
+    // copy the particles to device---- already there...by initliazation or Mover
+    // launch the moment kernel
+    momentKernelNew<<<(pclsArrayHostPtr[i]->getNOP()/256 + 1), 256, 0, streams[i] >>>(momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], 0);
+    // copy moments back to 10 densities
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getRHOns().get(i,0,0,0)),  momentsCUDAPtr[i]+0*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJxs().get(i,0,0,0)),    momentsCUDAPtr[i]+1*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJys().get(i,0,0,0)),    momentsCUDAPtr[i]+2*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getJzs().get(i,0,0,0)),    momentsCUDAPtr[i]+3*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXXsn().get(i,0,0,0)),  momentsCUDAPtr[i]+4*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXYsn().get(i,0,0,0)),  momentsCUDAPtr[i]+5*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpXZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+6*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpYYsn().get(i,0,0,0)),  momentsCUDAPtr[i]+7*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpYZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+8*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpZZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+9*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
 
-    }
   }
+
+  // synchronize
+  CalculateMomentsAwait();
+  
+
+}
+
+void c_Solver::CalculateMomentsAwait() {
+
+  timeTasks_set_main_task(TimeTasks::MOMENTS);
+
   // synchronize
   cudaErrChk(cudaDeviceSynchronize());
-
 
   for (int i = 0; i < ns; i++)
   {
@@ -560,6 +568,7 @@ void c_Solver::CalculateMoments(bool isInit) {
   // calculate the hat quantities for the implicit method
   EMf->calculateHatFunctions();
 }
+
 
 //! MAXWELL SOLVER for Efield
 void c_Solver::CalculateField(int cycle) {
@@ -647,7 +656,7 @@ void c_Solver::CalculateB() {
 /*  -------------- */
 /*!  Particle mover */
 /*  -------------- */
-bool c_Solver::ParticlesMover()
+bool c_Solver::ParticlesMoverMomentAsync()
 {
   // move all species of particles
   {
