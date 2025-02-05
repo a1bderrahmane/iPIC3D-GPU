@@ -31,9 +31,6 @@ int main(int argc, char **argv) {
 
  MPIdata::init(&argc, &argv);
  {
-#if CUDA_ON==true
-  if(MPIdata::get_rank() == 0)std::cout << "The Software was built for GPU" << std::endl;
-#endif
 
   iPic3D::c_Solver KCode;
   KCode.Init(argc, argv); //! load param from file, init the grid, fields

@@ -39,7 +39,7 @@ using std::string;
 class OutputWrapperFPP;
 #endif
 
-#if CUDA_ON == true
+
 #include "cudaTypeDef.cuh"
 #include "moverKernel.cuh"
 #include "momentKernel.cuh"
@@ -47,7 +47,7 @@ class OutputWrapperFPP;
 #include "gridCUDA.cuh"
 #include "particleExchange.cuh"
 #include "threadPool.hpp"
-#endif
+
 
 namespace iPic3D {
 
@@ -119,7 +119,7 @@ namespace iPic3D {
     double        *Qremoved; // array of double, with species length, removed charges from the depopulation area
     Timing        *my_clock;
 
-#if CUDA_ON == true
+
     int cudaDeviceOnNode; // the device this rank should use
     cudaStream_t*       streams;
 
@@ -156,7 +156,7 @@ namespace iPic3D {
     ThreadPool *threadPoolPtr;
 
     cudaEvent_t event0;
-#endif
+
 
 
 #ifndef NO_HDF5

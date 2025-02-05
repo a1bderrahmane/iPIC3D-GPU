@@ -47,7 +47,7 @@
 
 #include "Moments.h" // for debugging
 
-#if CUDA_ON == true
+
 #include "cudaTypeDef.cuh"
 #include "momentKernel.cuh"
 #include "particleArrayCUDA.cuh"
@@ -55,7 +55,7 @@
 #include "particleExchange.cuh"
 #include "thread"
 #include "future"
-#endif
+
 
 #ifdef USE_CATALYST
 #include "Adaptor.h"
@@ -271,9 +271,8 @@ int c_Solver::Init(int argc, char **argv) {
 		  grid->getDZ());
 #endif
 
-#if CUDA_ON == true
+
   initCUDA();
-#endif
 
   my_clock = new Timing(myrank);
 
@@ -514,59 +513,6 @@ void c_Solver::CalculateMoments(bool isInit) {
 
   timeTasks_set_main_task(TimeTasks::MOMENTS);
 
-#if MOMENT_CUDA_ON == false
-  pad_particle_capacities();
-  // vectorized assumes that particles are sorted by mesh cell
-  if(Parameters::get_VECTORIZE_MOMENTS())
-  {
-    switch(Parameters::get_MOMENTS_TYPE())
-    {
-      case Parameters::SoA:
-        // since particles are sorted,
-        // we can vectorize interpolation of particles to grid
-        convertParticlesToSoA();
-        sortParticles();
-        EMf->sumMoments_vectorized(part);
-        break;
-      case Parameters::AoS:
-        convertParticlesToAoS();
-        sortParticles();
-        EMf->sumMoments_vectorized_AoS(part);
-        break;
-      default:
-        unsupported_value_error(Parameters::get_MOMENTS_TYPE());
-    }
-  }
-  else
-  {
-    if(Parameters::get_SORTING_PARTICLES())
-      sortParticles();
-    switch(Parameters::get_MOMENTS_TYPE())
-    {
-      case Parameters::SoA:
-        EMf->setZeroPrimaryMoments();
-        convertParticlesToSoA();
-        EMf->sumMoments(part);
-        break;
-      case Parameters::AoS:
-        EMf->setZeroPrimaryMoments(); // clear the data to 0
-        convertParticlesToAoS(); // convert 
-        EMf->sumMoments_AoS(part); // sum up the 10 densities of each particles of each species
-        // then calculate the weight according to their position
-        // map the 10 momentum to the grid(node) with the weight
-        
-        break;
-      case Parameters::AoSintr:
-        EMf->setZeroPrimaryMoments();
-        convertParticlesToAoS();
-        EMf->sumMoments_AoS_intr(part);
-        break;
-      default:
-        unsupported_value_error(Parameters::get_MOMENTS_TYPE());
-    }
-  }
-#else
-
   // sum moments
   if(isInit){
     auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
@@ -591,8 +537,7 @@ void c_Solver::CalculateMoments(bool isInit) {
   }
   // synchronize
   cudaErrChk(cudaDeviceSynchronize());
-  
-#endif
+
 
   for (int i = 0; i < ns; i++)
   {
@@ -711,40 +656,6 @@ bool c_Solver::ParticlesMover()
     //EMf->set_fieldForPcls();
     EMf->set_fieldForPclsToCenter(fieldForPclHostPtr);
 
-#if MOVER_CUDA_ON==false
-    pad_particle_capacities();
-    for (int i = 0; i < ns; i++)  // move each species
-    {
-      // #pragma omp task inout(part[i]) in(grid) target_device(booster)
-      // should merely pass EMf->get_fieldForPcls() rather than EMf.
-      // use the Predictor Corrector scheme to move particles
-      switch(Parameters::get_MOVER_TYPE())
-      {
-        case Parameters::SoA:
-          part[i].mover_PC(EMf);
-          break;
-        case Parameters::AoS:
-          part[i].mover_PC_AoS(EMf);
-          break;
-        case Parameters::AoS_Relativistic:
-        	part[i].mover_PC_AoS_Relativistic(EMf);
-        	break;
-        case Parameters::AoSintr:
-          part[i].mover_PC_AoS_vec_intr(EMf);
-          break;
-        case Parameters::AoSvec:
-          part[i].mover_PC_AoS_vec(EMf);
-          break;
-        default:
-          unsupported_value_error(Parameters::get_MOVER_TYPE());
-      }
-
-	  //Should integrate BC into separate_and_send_particles
-	  part[i].openbc_particles_outflow();
-	  part[i].separate_and_send_particles();
-
-    }
-#else
     auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
     //! copy fieldForPcls to device, for every species 
     //cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, (void*)&(EMf->get_fieldForPcls().get(0,0,0,0)), gridSize*8*sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
@@ -762,7 +673,6 @@ bool c_Solver::ParticlesMover()
       // part[i].openbc_particles_outflow();
       auto a = part[i].separate_and_send_particles();
     }
-#endif
 
     for (int i = 0; i < ns; i++)  // communicate each species
     {
@@ -790,7 +700,7 @@ bool c_Solver::ParticlesMover()
 	//   Qremoved[i] = part[i].deleteParticlesInsideSphere2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
   // }
 
-#if MOVER_CUDA_ON==true
+
   for(int i=0; i<ns; i++){
 
     // now the host array contains the entering particles
@@ -834,8 +744,6 @@ bool c_Solver::ParticlesMover()
     cudaErrChk(cudaMemcpyAsync((void*)&(EMf->getpZZsn().get(i,0,0,0)),  momentsCUDAPtr[i]+9*gridSize, gridSize*sizeof(cudaCommonType), cudaMemcpyDefault, streams[i]));
   }
 
-
-#endif
 
   /* --------------------------------------- */
   /* Test Particles mover 					 */
