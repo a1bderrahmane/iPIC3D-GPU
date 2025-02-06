@@ -232,7 +232,7 @@ public:
         cudaErrChk(cudaMallocHost(&logResult, sizeof(T)));
     }
 
-    __host__ int initGMM(std::string outputPath){
+    __host__ int initGMM(){
 
         // do the GMR
         int step = 0;
@@ -260,7 +260,7 @@ public:
             step++;
         }
 
-        return outputGMM(step, outputPath);
+        return step;
 
     }
 

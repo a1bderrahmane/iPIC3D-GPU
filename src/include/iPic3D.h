@@ -54,14 +54,14 @@ namespace iPic3D {
 }
 
 namespace dataAnalysis {
-  int analysisEntre(iPic3D::c_Solver& KCode, int cycle);
+  class dataAnalysisPipelineImpl;
 }
 
 namespace iPic3D {
 
   class c_Solver {
 
-  friend int dataAnalysis::analysisEntre(c_Solver& KCode, int cycle);
+  friend dataAnalysis::dataAnalysisPipelineImpl;
 
   public:
     ~c_Solver();

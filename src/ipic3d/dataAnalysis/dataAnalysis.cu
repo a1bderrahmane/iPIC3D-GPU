@@ -2,6 +2,7 @@
 #include <thread>
 #include <future>
 #include <string>
+#include <memory>
 
 #include "iPic3D.h"
 #include "VCtopology3D.h"
@@ -20,28 +21,92 @@ namespace dataAnalysis
 {
 
 using namespace iPic3D;
-
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
 
-static ThreadPool DAthreadPool(4);
+
+class dataAnalysisPipelineImpl {
+using weightType = cudaTypeSingle;
+private:
+    int ns;
+    int deviceOnNode;
+    // pointers to objects in KCode
+    cudaStream_t* streams;
+    particleArrayCUDA** pclsArrayHostPtr = nullptr;
+
+    std::future<int> analysisFuture;
+
+    ThreadPool* DAthreadPool = nullptr;
+    velocitySoA* velocitySoACUDA = nullptr;
+    // histogram
+    string HistogramSubDomainOutputPath;
+    velocityHistogram::velocityHistogram* velocityHistogram = nullptr;
+
+    // GMM
+    string GMMSubDomainOutputPath;
+    cudaGMMWeight::GMM<cudaCommonType, 2, weightType>* gmmArray = nullptr;
+
+public:
+
+    dataAnalysisPipelineImpl(c_Solver& KCode) {
+        ns = KCode.ns;
+        deviceOnNode = KCode.cudaDeviceOnNode;
+        streams = KCode.streams;
+        pclsArrayHostPtr = KCode.pclsArrayHostPtr;
+
+        DAthreadPool = new ThreadPool(4);
+
+        if constexpr (VELOCITY_HISTOGRAM_ENABLE) { // velocity histogram
+            velocitySoACUDA = new velocitySoA();
+
+            HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
+            velocityHistogram = new velocityHistogram::velocityHistogram(12000);
+
+            if constexpr (GMM_ENABLE) { // GMM
+                GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
+                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, 2, weightType>[3];
+            }
+        }
+    }
+
+    void startAnalysis(int cycle);
+
+    int checkAnalysis();
+
+    int waitForAnalysis();
+
+
+    ~dataAnalysisPipelineImpl() {
+        if (DAthreadPool != nullptr) delete DAthreadPool;
+        if (velocitySoACUDA != nullptr) delete velocitySoACUDA;
+        if (velocityHistogram != nullptr) delete velocityHistogram;
+        if (gmmArray != nullptr) delete[] gmmArray;
+    }
+
+private:
+
+    int analysisEntre(int cycle);
+
+    int GMMAnalysisSpecies(int cycle, std::string outputPath);
+    
+};
+
+
 
 /**
  * @brief analysis function for each species, uv, uw, vw
  * @details It launches 3 threads for uv uw vw analysis in parallel
  * 
- * @param outputPath the output path for the species 
  */
-int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, int cycle, std::string outputPath, int device){
+int dataAnalysisPipelineImpl::GMMAnalysisSpecies(int cycle, std::string outputPath){
 
     using weightType = cudaTypeSingle;
 
     std::future<int> future[3];
-    static cudaGMMWeight::GMM<cudaCommonType, 2, weightType> gmmArray[3];
 
     auto GMMLambda = [=](int i) mutable {
         using namespace cudaGMMWeight;
 
-        cudaErrChk(cudaSetDevice(device));
+        cudaErrChk(cudaSetDevice(deviceOnNode));
 
         // GMM config
         constexpr auto numComponent = 2;
@@ -82,7 +147,9 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
 
         auto& gmm = gmmArray[i];
         gmm.config(&GMMParam, &GMMData);
-        auto ret =  gmm.initGMM(fileOutputPath); // the exact output file name
+        auto convergStep = gmm.initGMM(); // the exact output file name
+        int ret = 0;
+        if constexpr (GMM_OUTPUT) ret = gmm.outputGMM(convergStep, fileOutputPath);
 
         cudaErrChk(cudaHostUnregister(&GMMData));
         
@@ -91,7 +158,7 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
 
     for(int i = 0; i < 3; i++){
         // launch 3 async threads for uv, uw, vw
-        future[i] = DAthreadPool.enqueue(GMMLambda, i); 
+        future[i] = DAthreadPool->enqueue(GMMLambda, i); 
     }
 
     for(int i = 0; i < 3; i++){
@@ -107,29 +174,27 @@ int GMMAnalysisSpecies(velocityHistogram::velocityHistogram* velocityHistogram, 
  *          But the procedures can launch other threads to do the analysis
  *          Also this function is a friend function of c_Solver, resources in the c_Slover should be dispatched here
  */
-int analysisEntre(c_Solver& KCode, int cycle){
-    cudaErrChk(cudaSetDevice(KCode.cudaDeviceOnNode));
-
-    // ./velocityGMM/subDomain0/species0/uv_1000.json , like this
-    static auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-    static auto HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-
-    static auto velocitySoACUDA = velocitySoA();
-    static auto velocityHistogram = velocityHistogram::velocityHistogram(12000);
+int dataAnalysisPipelineImpl::analysisEntre(int cycle){
+    cudaErrChk(cudaSetDevice(deviceOnNode));
 
     // species by species to save VRAM
-    for(int i = 0; i < KCode.ns; i++){
-        // to SoA
-        velocitySoACUDA.updateFromAoS(KCode.pclsArrayHostPtr[i], KCode.streams[i]);
+    for(int i = 0; i < ns; i++){
+        if constexpr (VELOCITY_HISTOGRAM_ENABLE) {
+            // to SoA
+            velocitySoACUDA->updateFromAoS(pclsArrayHostPtr[i], streams[i]);
 
-        // histogram
-        auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        velocityHistogram.init(&velocitySoACUDA, cycle, i, KCode.streams[i]);
-        velocityHistogram.writeToFileFloat(histogramSpeciesOutputPath, KCode.streams[i]);
+            // histogram
+            auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
+            velocityHistogram->init(velocitySoACUDA, cycle, i, streams[i]);
+            if constexpr (HISTOGRAM_OUTPUT)
+            velocityHistogram->writeToFileFloat(histogramSpeciesOutputPath, streams[i]); // TODO
+            else cudaErrChk(cudaStreamSynchronize(streams[i]));
 
-        // GMM
-        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        GMMAnalysisSpecies(&velocityHistogram, cycle, GMMSpeciesOutputPath, KCode.cudaDeviceOnNode);
+            if constexpr (GMM_ENABLE) { // GMM
+                auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+                GMMAnalysisSpecies(cycle, GMMSpeciesOutputPath);
+            }
+        }
     }
 
     return 0;
@@ -139,14 +204,18 @@ int analysisEntre(c_Solver& KCode, int cycle){
 /**
  * @brief start all the analysis registered here
  */
-std::future<int> startAnalysis(c_Solver& KCode, int cycle){
+void dataAnalysisPipelineImpl::startAnalysis(int cycle){
 
     if(DATA_ANALYSIS_EVERY_CYCLE == 0 || (cycle % DATA_ANALYSIS_EVERY_CYCLE != 0)){
-        return std::future<int>();
+        analysisFuture = std::future<int>();
+    } else {
+        analysisFuture = DAthreadPool->enqueue(&dataAnalysisPipelineImpl::analysisEntre, this, cycle); 
+
+        if(analysisFuture.valid() == false){
+            throw std::runtime_error("[!]Error: Can not start data analysis");
+        }
     }
 
-    std::future<int> analysisFuture = DAthreadPool.enqueue(analysisEntre, std::ref(KCode), cycle); 
-    return analysisFuture;
 }
 
 /**
@@ -154,7 +223,7 @@ std::future<int> startAnalysis(c_Solver& KCode, int cycle){
  * 
  * @return 0 if the analysis is done, 1 if it is not done
  */
-int checkAnalysis(std::future<int>& analysisFuture){
+int dataAnalysisPipelineImpl::checkAnalysis(){
 
     if(analysisFuture.valid() == false){
         return 0;
@@ -172,7 +241,7 @@ int checkAnalysis(std::future<int>& analysisFuture){
 /**
  * @brief wait for the analysis to be done, blocking
  */
-int waitForAnalysis(std::future<int>& analysisFuture){
+int dataAnalysisPipelineImpl::waitForAnalysis(){
 
     if(analysisFuture.valid() == false){
         return 0;
@@ -183,14 +252,15 @@ int waitForAnalysis(std::future<int>& analysisFuture){
     return 0;
 }
 
-void createOutputDirectory(int myrank, int ns, VirtualTopology3D* vct){ // output path for data analysis
-    auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
-    for(int i = 0; i < ns; i++){
-        auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-        if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
-        throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
-        }
+
+/**
+ * @brief create output directory for the data analysis, controlled by dataAnalysisConfig.cuh
+ */
+void dataAnalysisPipeline::createOutputDirectory(int myrank, int ns, VirtualTopology3D* vct){ // output path for data analysis
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        return;
     }
+
     // VCT mapping for this subdomain
     auto writeVctMapping = [&](const std::string& filePath) {
         std::ofstream vctMapping(filePath);
@@ -220,21 +290,64 @@ void createOutputDirectory(int myrank, int ns, VirtualTopology3D* vct){ // outpu
         }
     };
 
-    writeVctMapping(GMMSubDomainOutputPath + "vctMapping.txt");
-
-
-    auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
-    for(int i = 0; i < ns; i++){
-        auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species" + std::to_string(i);
-        if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
-        throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
+    if constexpr (VELOCITY_HISTOGRAM_ENABLE && HISTOGRAM_OUTPUT) {
+        auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+        for(int i = 0; i < ns; i++){
+            auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species" + std::to_string(i);
+            if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
+            throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
+            }
         }
+        writeVctMapping(histogramSubDomainOutputPath + "vctMapping.txt");
     }
-    writeVctMapping(histogramSubDomainOutputPath + "vctMapping.txt");
+
+    if constexpr (GMM_ENABLE && GMM_OUTPUT) {
+        auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+        for(int i = 0; i < ns; i++){
+            auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
+            if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
+            throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
+            }
+        }
+        writeVctMapping(GMMSubDomainOutputPath + "vctMapping.txt");
+    }
 
 }
 
 
+
+dataAnalysisPipeline::dataAnalysisPipeline(iPic3D::c_Solver& KCode) {
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        impl = nullptr;
+        return;
+    }
+    impl = std::make_unique<dataAnalysisPipelineImpl>(std::ref(KCode));
+}
+
+void dataAnalysisPipeline::startAnalysis(int cycle) {
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        return;
+    }
+    impl->startAnalysis(cycle);
+}
+
+int dataAnalysisPipeline::checkAnalysis() {
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        return 0;
+    }
+    return impl->checkAnalysis();
+}
+
+int dataAnalysisPipeline::waitForAnalysis() {
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        return 0;
+    }
+    return impl->waitForAnalysis();
+}
+
+dataAnalysisPipeline::~dataAnalysisPipeline() {
+    
+}
     
 } // namespace dataAnalysis
 

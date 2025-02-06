@@ -36,6 +36,8 @@ int main(int argc, char **argv) {
 
   iPic3D::c_Solver KCode;
   KCode.Init(argc, argv); //! load param from file, init the grid, fields
+  dataAnalysis::dataAnalysisPipeline DA(KCode); // has to be created after KCode.Init()
+
 
   timeTasks.resetCycle(); //reset timer
   KCode.CalculateMoments();
@@ -46,12 +48,9 @@ int main(int argc, char **argv) {
 
     timeTasks.resetCycle();
 
-    auto analysisFuture = dataAnalysis::startAnalysis(KCode, i);
-
+    DA.startAnalysis(i);
     KCode.CalculateField(i); // E field
-
-    dataAnalysis::waitForAnalysis(analysisFuture);
-
+    DA.waitForAnalysis();
 
     KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
     KCode.CalculateB(); // B field
