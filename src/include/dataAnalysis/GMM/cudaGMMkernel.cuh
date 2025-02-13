@@ -23,7 +23,7 @@ namespace cudaGMMWeightKernel
  * @param numComponents number of components
  */
 template <typename T, int dataDim, typename U>
-__global__ void calcLogLikelihoodForPointsKernel(const cudaGMMWeight::GMMDataMultiDim<T, dataDim, U>* dataCUDAPtr, const T* meanVector, T* coVarianceDecomp, T* logLikelihoodForPoints, const int numComponents){
+__global__ void calcLogLikelihoodForPointsKernel(const cudaGMMWeight::GMMDataMultiDim<T, dataDim, U>* dataCUDAPtr, const T* meanVector, const T* coVarianceDecomp, T* logLikelihoodForPoints, const int numComponents){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     auto numData = dataCUDAPtr->getNumData();
     if(idx >= numData)return;
