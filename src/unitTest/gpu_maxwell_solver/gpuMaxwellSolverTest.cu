@@ -113,12 +113,12 @@ struct TestInput {
   double Lx = 16.0;
   double Ly = 4.0;
   double Lz = 4.0;
-  int nxc = 128;
-  int nyc = 164;
-  int nzc = 128;
+  int nxc = 64;
+  int nyc = 64;
+  int nzc = 64;
   int xlen = 2;
-  int ylen = 2;
-  int zlen = 2;
+  int ylen = 1;
+  int zlen = 1;
 
   double dt = 0.05;
   double c = 1.0;

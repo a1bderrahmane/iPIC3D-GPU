@@ -11,3 +11,6 @@ Debug*
 doctmp/
 
 thirdparty/
+*.nsys-rep
+*.csv
+*.sqlite
