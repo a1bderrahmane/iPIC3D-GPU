@@ -594,6 +594,7 @@ class EMfields3D                // :public Field
      *  are enforced locally so the operator better matches the full Maxwell image. */
     void gpuMaxwellImageLocal(cudaSolverType* d_im, cudaSolverType* d_vector);
     /** GPU MaxwellSource: build RHS of Maxwell system (result in device Krylov vector). */
+    void gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cudaSolverType *d_vector);
     void gpuMaxwellSource(cudaSolverType* d_bkrylov);
 
     // ---- GPU Chebyshev Semi-Iterative Solver ----
@@ -664,7 +665,9 @@ class EMfields3D                // :public Field
     void gpuLapN2N_3(GPUFieldArray3& lapA, GPUFieldArray3& fieldA,
                      GPUFieldArray3& lapB, GPUFieldArray3& fieldB,
                      GPUFieldArray3& lapC, GPUFieldArray3& fieldC);
-
+void gpuLapN2N_3_gradients(GPUFieldArray3 &fieldA,
+                                       GPUFieldArray3 &fieldB,
+                                       GPUFieldArray3 &fieldC);
     // ---- GPU Solver: moment post-processing on GPU ----
     /** D2D scatter: copy 10 packed moment arrays from the moment-kernel buffer
      *  (momentsSrc, layout [10][gridSize]) into the per-species slices of
@@ -1130,7 +1133,9 @@ class EMfields3D                // :public Field
     //  same MPI derived datatypes can be used with GPU-aware MPI by passing
     //  the device pointer instead of the host pointer.
     // =========================================================================
-
+cudaGraphExec_t s1Exec_;
+  cudaGraphExec_t s2Exec_;
+  cudaGraphExec_t s5Exec_;
     // Electric field (node-based)
     GPUFieldArray3 d_Ex, d_Ey, d_Ez;
     GPUFieldArray3 d_Exth, d_Eyth, d_Ezth;

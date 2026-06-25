@@ -44,6 +44,88 @@
 #include "GPUPhysicsKernels.cuh"
 #include "GPUMaxwellLocal.cuh"
 #include "GPUChebyshev.cuh"
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <MPIdata.h>
+#include <chrono>
+#include <nvtx3/nvToolsExt.h>
+
+namespace
+{
+  struct MaxwellImageTimer
+  {
+    std::vector<double> ms;
+    std::chrono::steady_clock::time_point t0;
+    int rank = 0;
+    bool inited = false;
+
+    void init()
+    {
+      if (inited)
+        return;
+      ms.reserve(1 << 16);
+      rank = MPIdata::get_rank();
+      inited = true;
+    }
+    void begin(cudaStream_t stream)
+    {
+      init();
+      t0 = std::chrono::steady_clock::now();
+    }
+    void end(cudaStream_t stream)
+    {
+      auto t1 = std::chrono::steady_clock::now();
+      ms.push_back(std::chrono::duration<double, std::milli>(t1 - t0).count());
+    }
+
+    ~MaxwellImageTimer() { report(); } // runs at program exit
+
+    void report()
+    {
+      if (ms.empty())
+        return;
+      std::vector<double> v = ms;
+      std::sort(v.begin(), v.end());
+      const size_t n = v.size();
+
+      double sum = 0.0;
+      for (double x : v)
+        sum += x;
+      const double mean = sum / n;
+
+      double var = 0.0;
+      for (double x : v)
+        var += (x - mean) * (x - mean);
+      var /= (n > 1 ? n - 1 : 1); // sample stdev (n-1)
+      const double sd = std::sqrt(var);
+
+      const double median =
+          (n % 2) ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
+
+      fprintf(stderr,
+              "[rank %d] gpuMaxwellImage_cuda_graph over %zu calls (ms):\n"
+              "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
+              "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
+              rank, sum, n, mean, median, v.front(), v.back(), sd);
+
+      // Raw per-call samples, one rank-local file, for later analysis.
+      char fname[256];
+      std::snprintf(fname, sizeof(fname),
+                    "maxwell_image_timing_rank%d.csv", rank);
+      if (FILE *f = std::fopen(fname, "w"))
+      {
+        std::fprintf(f, "call,ms\n");
+        for (size_t i = 0; i < ms.size(); ++i)
+          std::fprintf(f, "%zu,%.6f\n", i, ms[i]); // ms = call order, not sorted
+        std::fclose(f);
+      }
+    }
+  };
+  static MaxwellImageTimer g_maxwellImageTimer;
+} // namespace
+
 
 #ifdef HALO_OVERLAP
 // Forward declarations for BC face functions (defined in GPUHaloComm.cu).
@@ -229,7 +311,21 @@ void EMfields3D::gpuSolverAllocate()
 void EMfields3D::gpuSolverFree()
 {
   if (!gpuSolverAllocated_) return;
-
+  if (s1Exec_)
+  {
+    cudaGraphExecDestroy(s1Exec_);
+    s1Exec_ = nullptr;
+  }
+  if (s2Exec_)
+  {
+    cudaGraphExecDestroy(s2Exec_);
+    s2Exec_ = nullptr;
+  }
+  if (s5Exec_)
+  {
+    cudaGraphExecDestroy(s5Exec_);
+    s5Exec_ = nullptr;
+  }
   // Electric field
   d_Ex.free();   d_Ey.free();   d_Ez.free();
   d_Exth.free(); d_Eyth.free(); d_Ezth.free();
@@ -703,7 +799,22 @@ void EMfields3D::gpuPerfectConductorRight(
 //    fieldB → d_divC   / d_poissonTemp / d_poissonIm
 //    fieldC → d_divBwork / d_divE_work / d_tempC
 // =========================================================================
+void EMfields3D::gpuLapN2N_3_gradients(GPUFieldArray3 &fieldA,
+                                       GPUFieldArray3 &fieldB,
+                                       GPUFieldArray3 &fieldC)
+{
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
 
+  gpuGradN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+             fieldA.devPtr(), nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+  gpuGradN2C(d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+             fieldB.devPtr(), nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+  gpuGradN2C(d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+             fieldC.devPtr(), nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+}
 void EMfields3D::gpuLapN2N_3(
     GPUFieldArray3& lapA, GPUFieldArray3& fieldA,
     GPUFieldArray3& lapB, GPUFieldArray3& fieldB,
@@ -799,7 +910,216 @@ void EMfields3D::gpuLapN2N_3(
 // =========================================================================
 //  GPU MaxwellImage:  im = A * vector  (Krylov ↔ Krylov)
 // =========================================================================
+void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cudaSolverType *d_vector)
+{
+  g_maxwellImageTimer.begin(solverStream_);
+  const VirtualTopology3D *vct = &get_vct();
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+  size_t nodeSize = (size_t)nxn * nyn * nzn;
 
+  cudaSolverType *d_divD = d_PHI.devPtr(); // div(D) scratch (dead during Maxwell solve)
+
+  // ---- eager: Krylov -> physical (d_vector varies, cannot capture) ----
+  gpuSolver2Phys3(d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
+                  d_vector, nxn, nyn, nzn, solverStream_);
+
+  // =====================================================================
+  //  g_pre (s1Exec_): 9 memsets + 3 gradN2C + MUdot + divN2C(->d_PHI)
+  // =====================================================================
+  if (s1Exec_ == nullptr)
+  {
+    cudaSolverType *zptrs[9] = {d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                                d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                                d_Dx.devPtr(), d_Dy.devPtr(), d_Dz.devPtr()};
+    cudaGraph_t g;
+    cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+    gpuSetAll0_N(zptrs, 9, nodeSize, solverStream_);
+    gpuLapN2N_3_gradients(d_vectX, d_vectY, d_vectZ);
+    gpuMUdot(d_Dx, d_Dy, d_Dz, d_vectX, d_vectY, d_vectZ);
+    gpuDivN2C(d_divD, d_Dx.devPtr(), d_Dy.devPtr(), d_Dz.devPtr(),
+              nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+    cudaStreamEndCapture(solverStream_, &g);
+    cudaGraphInstantiate(&s1Exec_, g, NULL, NULL, 0);
+    cudaGraphDestroy(g);
+  }
+  nvtxRangePush("g_pre");
+  cudaGraphLaunch(s1Exec_, solverStream_);
+  nvtxRangePop();
+
+#ifdef HALO_OVERLAP
+  cudaSolverType *ptrs10[10] = {
+      d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+      d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+      d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+      d_divD};
+
+  // ---- halo_begin: pack + post MPI for all 10 (eager, uncapturable) ----
+  nvtxRangePush("halo_begin");
+  gpuBatchedHaloBeginExchange(ptrs10, 10, nxc, nyc, nzc,
+                              true, false, false, false, solverStream_);
+  nvtxRangePop();
+
+  // =====================================================================
+  //  g_interior (s2Exec_): interior divC2N + gradC2N, overlaps MPI.
+  //  Captured ONCE between begin/end; the kernels touch only interior
+  //  nodes (no ghost dependency) so capture-once/launch-every is valid.
+  // =====================================================================
+  if (s2Exec_ == nullptr)
+  {
+    cudaGraph_t gi;
+    cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+    gpuDivC2N_interior(d_imageX.devPtr(),
+                       d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuDivC2N_interior(d_imageY.devPtr(),
+                       d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuDivC2N_interior(d_imageZ.devPtr(),
+                       d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuGradC2N_interior(d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                        d_divD, nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    cudaStreamEndCapture(solverStream_, &gi);
+    cudaGraphInstantiate(&s2Exec_, gi, NULL, NULL, 0);
+    cudaGraphDestroy(gi);
+  }
+  nvtxRangePush("g_interior");
+  cudaGraphLaunch(s2Exec_, solverStream_);
+  nvtxRangePop();
+
+  // ---- halo_end: MPI_Waitall + unpack (eager, uncapturable) ----
+  nvtxRangePush("halo_end");
+  gpuBatchedHaloEndExchange(ptrs10, 10, nxc, nyc, nzc,
+                            true, false, false, false, solverStream_);
+  nvtxRangePop();
+
+  // =====================================================================
+  //  g_bc_post (s5Exec_): BC faces + boundary divC2N/gradC2N
+  //  + neg3 + sub3 + scale3 + sumAddTwo3 + conductor/openBC.
+  //  One long graph — the old g_post is folded in (no sync separates them).
+  // =====================================================================
+  bool hasLeftX = (vct->getXleft_neighbor() == MPI_PROC_NULL && bcEMfaceXleft == 0);
+  bool hasRightX = (vct->getXright_neighbor() == MPI_PROC_NULL && bcEMfaceXright == 0);
+  bool hasLeftY = (vct->getYleft_neighbor() == MPI_PROC_NULL && bcEMfaceYleft == 0);
+  bool hasRightY = (vct->getYright_neighbor() == MPI_PROC_NULL && bcEMfaceYright == 0);
+  bool hasLeftZ = (vct->getZleft_neighbor() == MPI_PROC_NULL && bcEMfaceZleft == 0);
+  bool hasRightZ = (vct->getZright_neighbor() == MPI_PROC_NULL && bcEMfaceZright == 0);
+
+  if (s5Exec_ == nullptr)
+  {
+    cudaGraph_t g5;
+    cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+
+    // BC faces: type 1 on the 9 gradients, type 2 on div(D)
+    gpuBCface(nxc, nyc, nzc, d_tempXC, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_tempYC, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_tempZC, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_divC, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_poissonTemp, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_poissonIm, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_divBwork, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_divE_work, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_tempC, 1, 1, 1, 1, 1, 1, &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_PHI, 2, 2, 2, 2, 2, 2, &_vct, solverStream_);
+
+    // boundary compute (ghost + BC now available)
+    gpuDivC2N_boundary(d_imageX.devPtr(),
+                       d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuDivC2N_boundary(d_imageY.devPtr(),
+                       d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuDivC2N_boundary(d_imageZ.devPtr(),
+                       d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+                       nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+    gpuGradC2N_boundary(d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                        d_divD, nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+
+    // arithmetic (folded-in old g_post): image = dt^2*(-lap - grad(divD)) + D + vect
+    gpuNeg3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(), nodeSize, solverStream_);
+    gpuSub3(d_imageX.devPtr(), d_tempX.devPtr(),
+            d_imageY.devPtr(), d_tempY.devPtr(),
+            d_imageZ.devPtr(), d_tempZ.devPtr(), nodeSize, solverStream_);
+    gpuScale3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+              delt * delt, nodeSize, solverStream_);
+    gpuSumAddTwo3(d_imageX.devPtr(), d_Dx.devPtr(), d_vectX.devPtr(),
+                  d_imageY.devPtr(), d_Dy.devPtr(), d_vectY.devPtr(),
+                  d_imageZ.devPtr(), d_Dz.devPtr(), d_vectZ.devPtr(),
+                  nodeSize, solverStream_);
+
+    if (hasLeftX)
+      gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+    if (hasRightX)
+      gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+    if (hasLeftY)
+      gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+    if (hasRightY)
+      gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+    if (hasLeftZ)
+      gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+    if (hasRightZ)
+      gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+
+    if (get_col().getApplyInflowBcsEImage())
+      gpuOpenBoundaryInflowEImage(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                                  d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
+                                  nxn, nyn, nzn);
+
+    cudaStreamEndCapture(solverStream_, &g5);
+    cudaGraphInstantiate(&s5Exec_, g5, NULL, NULL, 0);
+    cudaGraphDestroy(g5);
+  }
+  nvtxRangePush("g_bc_post");
+  cudaGraphLaunch(s5Exec_, solverStream_);
+  nvtxRangePop();
+
+#else // ---------- blocking fallback (not graph-optimized) ----------
+  nvtxRangePush("halo_blocking");
+  gpuLapN2N_3_finish(d_imageX, d_imageY, d_imageZ);               // halo A -> image = lap
+  gpuCommunicateCenterBC(nxc, nyc, nzc, d_PHI, 2, 2, 2, 2, 2, 2); // halo B
+  gpuGradC2N(d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+             d_divD, nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  nvtxRangePop();
+
+  nvtxRangePush("post_eager");
+  gpuNeg3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(), nodeSize, solverStream_);
+  gpuSub3(d_imageX.devPtr(), d_tempX.devPtr(),
+          d_imageY.devPtr(), d_tempY.devPtr(),
+          d_imageZ.devPtr(), d_tempZ.devPtr(), nodeSize, solverStream_);
+  gpuScale3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+            delt * delt, nodeSize, solverStream_);
+  gpuSumAddTwo3(d_imageX.devPtr(), d_Dx.devPtr(), d_vectX.devPtr(),
+                d_imageY.devPtr(), d_Dy.devPtr(), d_vectY.devPtr(),
+                d_imageZ.devPtr(), d_Dz.devPtr(), d_vectZ.devPtr(),
+                nodeSize, solverStream_);
+  if (vct->getXleft_neighbor() == MPI_PROC_NULL && bcEMfaceXleft == 0)
+    gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+  if (vct->getXright_neighbor() == MPI_PROC_NULL && bcEMfaceXright == 0)
+    gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+  if (vct->getYleft_neighbor() == MPI_PROC_NULL && bcEMfaceYleft == 0)
+    gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+  if (vct->getYright_neighbor() == MPI_PROC_NULL && bcEMfaceYright == 0)
+    gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+  if (vct->getZleft_neighbor() == MPI_PROC_NULL && bcEMfaceZleft == 0)
+    gpuPerfectConductorLeft(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+  if (vct->getZright_neighbor() == MPI_PROC_NULL && bcEMfaceZright == 0)
+    gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+  if (get_col().getApplyInflowBcsEImage())
+    gpuOpenBoundaryInflowEImage(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                                d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
+                                nxn, nyn, nzn);
+  nvtxRangePop();
+#endif
+
+  // ---- eager: physical -> Krylov (d_im varies, cannot capture) ----
+  gpuPhys2Solver3(d_im,
+                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                  nxn, nyn, nzn, solverStream_);
+  g_maxwellImageTimer.end(solverStream_);
+}
 void EMfields3D::gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector)
 {
   const VirtualTopology3D* vct = &get_vct();
@@ -1853,7 +2173,7 @@ void EMfields3D::gpuFGMRES_BlockJacobiPrecond(
   blockJacobiDinvStale = true;
   gpuEnsureFGMRESWorkspace(m, n);
 
-  gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage,
+  gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                  &EMfields3D::gpuBlockJacobiPrecond,
                  d_x, n, d_b, m, max_iter, tol,
                  d_blasScratch,
@@ -1901,12 +2221,12 @@ void EMfields3D::gpuCalculateE(int cycle)
     double eigMin = (chebEigMin > 0.0) ? chebEigMin : 1.0;
     double eigMax = chebEigMax;
     if (eigMax <= 0.0) {
-      eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage,
+      eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                                         nMaxwell, 20, fieldcomm);
     }
     gpuChebyshevSolve(d_xkrylovMaxwell.devPtr(), nMaxwell,
                       d_bkrylovMaxwell.devPtr(),
-                      &EMfields3D::gpuMaxwellImage,
+                      &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                       chebMaxIter, eigMin, eigMax, fieldcomm);
   } else if (SolverType == "FGMRESBlockJacobi") {
     // FGMRES(20) with communication-free block-Jacobi preconditioner
@@ -1917,7 +2237,7 @@ void EMfields3D::gpuCalculateE(int cycle)
                                  20, 200, GMREStol, fieldcomm);
   } else {
     // Default: GMRES(20) solver
-    gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage,
+    gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                   d_xkrylovMaxwell.devPtr(), nMaxwell,
                   d_bkrylovMaxwell.devPtr(),
                   20, 200, GMREStol,
