@@ -1133,9 +1133,13 @@ void gpuLapN2N_3_gradients(GPUFieldArray3 &fieldA,
     //  same MPI derived datatypes can be used with GPU-aware MPI by passing
     //  the device pointer instead of the host pointer.
     // =========================================================================
-cudaGraphExec_t s1Exec_;
-  cudaGraphExec_t s2Exec_;
-  cudaGraphExec_t s5Exec_;
+    cudaGraphExec_t s1Exec_ = nullptr;
+    cudaGraphExec_t s2Exec_ = nullptr;
+    cudaGraphExec_t s5Exec_ = nullptr;
+    // gpuCalculateB capture-once/launch-many graphs (see EMfields3DGPU.cpp)
+    cudaGraphExec_t bFieldUpdateExec_ = nullptr;
+    cudaGraphExec_t bInteriorExec_ = nullptr;
+    cudaGraphExec_t bBcPostExec_ = nullptr;
     // Electric field (node-based)
     GPUFieldArray3 d_Ex, d_Ey, d_Ez;
     GPUFieldArray3 d_Exth, d_Eyth, d_Ezth;

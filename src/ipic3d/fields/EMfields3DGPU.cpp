@@ -108,7 +108,7 @@ namespace
               "[rank %d] gpuMaxwellImage_cuda_graph over %zu calls (ms):\n"
               "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
               "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
-              rank, sum, n, mean, median, v.front(), v.back(), sd);
+              rank, n, sum, mean, median, v.front(), v.back(), sd);
 
       // Raw per-call samples, one rank-local file, for later analysis.
       char fname[256];
@@ -325,6 +325,21 @@ void EMfields3D::gpuSolverFree()
   {
     cudaGraphExecDestroy(s5Exec_);
     s5Exec_ = nullptr;
+  }
+  if (bFieldUpdateExec_)
+  {
+    cudaGraphExecDestroy(bFieldUpdateExec_);
+    bFieldUpdateExec_ = nullptr;
+  }
+  if (bInteriorExec_)
+  {
+    cudaGraphExecDestroy(bInteriorExec_);
+    bInteriorExec_ = nullptr;
+  }
+  if (bBcPostExec_)
+  {
+    cudaGraphExecDestroy(bBcPostExec_);
+    bBcPostExec_ = nullptr;
   }
   // Electric field
   d_Ex.free();   d_Ey.free();   d_Ez.free();
@@ -925,7 +940,7 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
   // ---- eager: Krylov -> physical (d_vector varies, cannot capture) ----
   gpuSolver2Phys3(d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
                   d_vector, nxn, nyn, nzn, solverStream_);
-
+  
   // =====================================================================
   //  g_pre (s1Exec_): 9 memsets + 3 gradN2C + MUdot + divN2C(->d_PHI)
   // =====================================================================
@@ -1067,7 +1082,10 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
       gpuOpenBoundaryInflowEImage(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                                   d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
                                   nxn, nyn, nzn);
-
+  gpuPhys2Solver3(d_im,
+                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                  nxn, nyn, nzn, solverStream_);
+//  g_maxwellImageTimer.end(solverStream_);
     cudaStreamEndCapture(solverStream_, &g5);
     cudaGraphInstantiate(&s5Exec_, g5, NULL, NULL, 0);
     cudaGraphDestroy(g5);
@@ -1075,6 +1093,7 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
   nvtxRangePush("g_bc_post");
   cudaGraphLaunch(s5Exec_, solverStream_);
   nvtxRangePop();
+ // g_maxwellImageTimer.end(solverStream_);
 
 #else // ---------- blocking fallback (not graph-optimized) ----------
   nvtxRangePush("halo_blocking");
@@ -1111,13 +1130,17 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
     gpuOpenBoundaryInflowEImage(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                                 d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
                                 nxn, nyn, nzn);
+   gpuPhys2Solver3(d_im,
+                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                  nxn, nyn, nzn, solverStream_);
+ // g_maxwellImageTimer.end(solverStream_);
   nvtxRangePop();
 #endif
 
-  // ---- eager: physical -> Krylov (d_im varies, cannot capture) ----
-  gpuPhys2Solver3(d_im,
-                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
-                  nxn, nyn, nzn, solverStream_);
+ //  ---- eager: physical -> Krylov (d_im varies, cannot capture) ----
+ /* gpuPhys2Solver3(d_im,
+                d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+              nxn, nyn, nzn, solverStream_);*/
   g_maxwellImageTimer.end(solverStream_);
 }
 void EMfields3D::gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector)
@@ -2289,54 +2312,107 @@ void EMfields3D::gpuCalculateB(int cycle)
 
   size_t centSize = (size_t)nxc * nyc * nzc;
 
-  // curl(Eth) → tempXC/YC/ZC
-  gpuCurlN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
-             d_Exth.devPtr(), d_Eyth.devPtr(), d_Ezth.devPtr(),
-             nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
-
-  // B^{n+1} = B^n - c*dt * curl(Eth)
-  gpuAddscale3(-c * dt,
-               d_Bxc.devPtr(), d_tempXC.devPtr(),
-               d_Byc.devPtr(), d_tempYC.devPtr(),
-               d_Bzc.devPtr(), d_tempZC.devPtr(), centSize, solverStream_);
+  // =====================================================================
+  //  bFieldUpdateExec_: curl(Eth) -> tempXC/YC/ZC, then
+  //  B^{n+1} = B^n - c*dt*curl(Eth). Captured once: grid dims, c and dt
+  //  are fixed for the lifetime of the run, and this pair of kernels
+  //  always executes (no cycle-dependent branch), so capture-once /
+  //  launch-every-cycle is safe.
+  // =====================================================================
+  if (bFieldUpdateExec_ == nullptr)
+  {
+    cudaGraph_t g;
+    cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+    gpuCurlN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+               d_Exth.devPtr(), d_Eyth.devPtr(), d_Ezth.devPtr(),
+               nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+    gpuAddscale3(-c * dt,
+                 d_Bxc.devPtr(), d_tempXC.devPtr(),
+                 d_Byc.devPtr(), d_tempYC.devPtr(),
+                 d_Bzc.devPtr(), d_tempZC.devPtr(), centSize, solverStream_);
+    cudaStreamEndCapture(solverStream_, &g);
+    cudaGraphInstantiate(&bFieldUpdateExec_, g, NULL, NULL, 0);
+    cudaGraphDestroy(g);
+  }
+  nvtxRangePush("gB_field_update");
+  cudaGraphLaunch(bFieldUpdateExec_, solverStream_);
+  nvtxRangePop();
 
   // Communicate center B ghost cells (batched: 3 fields in 1 MPI round)
 #ifdef HALO_OVERLAP
   {
     cudaSolverType* bptrs[3] = { d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr() };
+
+    // ---- halo_begin: pack + post MPI (eager, uncapturable) ----
+    nvtxRangePush("gB_halo_begin");
     gpuBatchedHaloBeginExchange(bptrs, 3, nxc, nyc, nzc,
                                 true, false, false, false, solverStream_);
+    nvtxRangePop();
 
-    // Interior interpC2N while MPI is in flight
-    gpuInterpC2N_interior(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
-    gpuInterpC2N_interior(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
-    gpuInterpC2N_interior(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+    // =====================================================================
+    //  bInteriorExec_: interior interpC2N, overlaps MPI. Captured once;
+    //  it touches only interior nodes (no ghost dependency), so
+    //  capture-once/launch-every-cycle is valid.
+    // =====================================================================
+    if (bInteriorExec_ == nullptr)
+    {
+      cudaGraph_t gi;
+      cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+      gpuInterpC2N_interior(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+      gpuInterpC2N_interior(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+      gpuInterpC2N_interior(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+      cudaStreamEndCapture(solverStream_, &gi);
+      cudaGraphInstantiate(&bInteriorExec_, gi, NULL, NULL, 0);
+      cudaGraphDestroy(gi);
+    }
+    nvtxRangePush("gB_interior");
+    cudaGraphLaunch(bInteriorExec_, solverStream_);
+    nvtxRangePop();
 
+    // ---- halo_end: MPI_Waitall + unpack (eager, uncapturable) ----
+    nvtxRangePush("gB_halo_end");
     gpuBatchedHaloEndExchange(bptrs, 3, nxc, nyc, nzc,
                               true, false, false, false, solverStream_);
+    nvtxRangePop();
 
-    // Mixed BC face application
-    gpuBCface(nxc, nyc, nzc, d_Bxc, col->bcBx[0], col->bcBx[1], col->bcBx[2], col->bcBx[3], col->bcBx[4], col->bcBx[5], &_vct, solverStream_);
-    gpuBCface(nxc, nyc, nzc, d_Byc, col->bcBy[0], col->bcBy[1], col->bcBy[2], col->bcBy[3], col->bcBy[4], col->bcBy[5], &_vct, solverStream_);
-    gpuBCface(nxc, nyc, nzc, d_Bzc, col->bcBz[0], col->bcBz[1], col->bcBz[2], col->bcBz[3], col->bcBz[4], col->bcBz[5], &_vct, solverStream_);
+    // =====================================================================
+    //  bBcPostExec_: BC faces + open-boundary inflow + case-specific
+    //  fixups on center B, then boundary interpC2N (needs ghost + BC +
+    //  fixup data, all now available). The host-side branches below
+    //  (rank-local topology, bcEMface*, simCase) are constant for the
+    //  lifetime of the run, so capture-once/launch-every-cycle is valid.
+    // =====================================================================
+    if (bBcPostExec_ == nullptr)
+    {
+      cudaGraph_t g5;
+      cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+
+      gpuBCface(nxc, nyc, nzc, d_Bxc, col->bcBx[0], col->bcBx[1], col->bcBx[2], col->bcBx[3], col->bcBx[4], col->bcBx[5], &_vct, solverStream_);
+      gpuBCface(nxc, nyc, nzc, d_Byc, col->bcBy[0], col->bcBy[1], col->bcBy[2], col->bcBy[3], col->bcBy[4], col->bcBy[5], &_vct, solverStream_);
+      gpuBCface(nxc, nyc, nzc, d_Bzc, col->bcBz[0], col->bcBz[1], col->bcBz[2], col->bcBz[3], col->bcBz[4], col->bcBz[5], &_vct, solverStream_);
+
+      gpuOpenBoundaryInflowB(d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr(), nxc, nyc, nzc);
+
+      {
+        const string& simCase = col->getCase();
+        if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+          gpuFixBcGEM();
+        if (simCase == "ForceFree")
+          gpuFixBforcefree();
+      }
+
+      gpuInterpC2N_boundary(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+      gpuInterpC2N_boundary(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+      gpuInterpC2N_boundary(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+
+      cudaStreamEndCapture(solverStream_, &g5);
+      cudaGraphInstantiate(&bBcPostExec_, g5, NULL, NULL, 0);
+      cudaGraphDestroy(g5);
+    }
+    nvtxRangePush("gB_bc_post");
+    cudaGraphLaunch(bBcPostExec_, solverStream_);
+    nvtxRangePop();
   }
-
-  // Open boundary conditions on center-based B
-  gpuOpenBoundaryInflowB(d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr(), nxc, nyc, nzc);
-
-  // Case-specific fixes on center-based B
-  {
-    const string& simCase = col->getCase();
-    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
-      gpuFixBcGEM();
-    if (simCase == "ForceFree")
-      gpuFixBforcefree();
-  }
-
-  // Boundary interpC2N (ghost + BC + fixup data now available)
-  gpuInterpC2N_boundary(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
-  gpuInterpC2N_boundary(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
-  gpuInterpC2N_boundary(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
 #else
   gpuCommunicateCenterBC_3mixed(nxc, nyc, nzc,
       d_Bxc, col->bcBx, d_Byc, col->bcBy, d_Bzc, col->bcBz);
@@ -3205,3 +3281,4 @@ void EMfields3D::gpuApplyDivBCleaning()
 
 
 #endif // GPU_SOLVER
+

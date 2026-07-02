@@ -35,7 +35,8 @@
 #include "Timing.h"
 #include "outputPrepare.h"
 #include "IOManager.h"
-
+#include <cuda_runtime.h>
+#include <cuda_profiler_api.h>
 #ifdef GPU_SOLVER
 #include "GPUFieldPacking.cuh"
 #endif
@@ -1144,8 +1145,11 @@ void c_Solver::CalculateField(int cycle) {
   timeTasks_set_main_task(TimeTasks::FIELDS);
 
 #ifdef GPU_SOLVER
+ 
   // Full GPU field solver — results stay in device arrays (d_Ex, d_Exth, ...)
+//  cudaProfilerStart();
   EMf->gpuCalculateE(cycle);
+  //cudaProfilerStop();
   // Record event so particle packing can wait for solver completion
   cudaErrChk(cudaEventRecord(solverDoneEvent, EMf->gpuSolverStream()));
 #else

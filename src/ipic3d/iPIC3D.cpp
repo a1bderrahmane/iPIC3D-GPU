@@ -25,6 +25,7 @@
 #include "TimeTasks.h"
 #include <stdio.h>
 #include <chrono>
+#include <cuda_profiler_api.h>
 
 #include "dataAnalysis.cuh"
 
@@ -42,6 +43,8 @@ int main(int argc, char **argv) {
 
   timeTasks.resetCycle(); //reset timer
   KCode.CalculateMoments();
+  //cudaProfilerStart();
+
   for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) {
 
     if (KCode.get_myrank() == 0)
@@ -103,7 +106,7 @@ int main(int argc, char **argv) {
     timeTasks.print_cycle_times(i); // print out total time for all tasks
 #endif
   }
-
+//cudaProfilerStop();
 #ifdef LOG_TASKS_TOTAL_TIME
     timeTasks.print_tasks_total_times();
 #endif

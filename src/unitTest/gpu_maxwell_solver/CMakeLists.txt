@@ -9,6 +9,10 @@ set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 option(HIP_ON "Use HIP" OFF)
+# Overlapped halo-exchange path in EMfields3DGPU.cpp. Must be ON: the #else
+# (blocking) fallback of gpuMaxwellImage_cuda_graph_refactored references
+# gpuLapN2N_3_finish, which does not exist, so OFF will not compile.
+option(HALO_OVERLAP "Enable overlapped halo exchange path" ON)
 set(CUDA_ARCH "75" CACHE STRING "CUDA compute capability to compile for")
 set(HIP_ARCH "gfx90a" CACHE STRING "HIP GPU architecture")
 # Keep this default in sync with TestInput::{x,y,z}len.
@@ -76,6 +80,16 @@ endif()
 target_include_directories(gpuMaxwellSolverTest PUBLIC ${include_path})
 target_link_libraries(gpuMaxwellSolverTest PRIVATE MPI::MPI_CXX)
 target_compile_definitions(gpuMaxwellSolverTest PUBLIC GPU_SOLVER NO_HDF5)
+
+if(HALO_OVERLAP)
+  target_compile_definitions(gpuMaxwellSolverTest PUBLIC HALO_OVERLAP)
+  message(STATUS "HALO_OVERLAP path enabled.")
+else()
+  message(WARNING
+    "HALO_OVERLAP is OFF: the blocking #else fallback in "
+    "gpuMaxwellImage_cuda_graph_refactored references gpuLapN2N_3_finish "
+    "and will not compile until that path is fixed.")
+endif()
 
 if(NOT HIP_ON)
   set_target_properties(gpuMaxwellSolverTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
