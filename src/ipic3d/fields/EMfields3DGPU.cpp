@@ -2195,7 +2195,7 @@ void EMfields3D::gpuFGMRES_BlockJacobiPrecond(
 
   blockJacobiDinvStale = true;
   gpuEnsureFGMRESWorkspace(m, n);
-
+  #ifdef CUDA_GRAPH
   gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                  &EMfields3D::gpuBlockJacobiPrecond,
                  d_x, n, d_b, m, max_iter, tol,
@@ -2206,6 +2206,18 @@ void EMfields3D::gpuFGMRES_BlockJacobiPrecond(
                  h_gmresReduceLocal, h_gmresReduceGlobal,
                  h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY,
                  "FGMRES+BlockJacobi");
+  #else 
+  gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage,
+                 &EMfields3D::gpuBlockJacobiPrecond,
+                 d_x, n, d_b, m, max_iter, tol,
+                 d_blasScratch,
+                 d_gmresV, d_gmresW, gmresVAlloc,
+                 d_fgmresZ, fgmresZAlloc,
+                 fieldcomm, solverStream_,
+                 h_gmresReduceLocal, h_gmresReduceGlobal,
+                 h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY,
+                 "FGMRES+BlockJacobi");
+  #endif
 }
 
 // =========================================================================
@@ -2244,13 +2256,26 @@ void EMfields3D::gpuCalculateE(int cycle)
     double eigMin = (chebEigMin > 0.0) ? chebEigMin : 1.0;
     double eigMax = chebEigMax;
     if (eigMax <= 0.0) {
+      #ifdef CUDA_GRAPH
       eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                                         nMaxwell, 20, fieldcomm);
+      #else
+      eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage,
+                                        nMaxwell, 20, fieldcomm);
+      #endif
+
     }
+    #ifdef CUDA_GRAPH
     gpuChebyshevSolve(d_xkrylovMaxwell.devPtr(), nMaxwell,
                       d_bkrylovMaxwell.devPtr(),
                       &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                       chebMaxIter, eigMin, eigMax, fieldcomm);
+    #else
+    gpuChebyshevSolve(d_xkrylovMaxwell.devPtr(), nMaxwell,
+                      d_bkrylovMaxwell.devPtr(),
+                      &EMfields3D::gpuMaxwellImage,
+                      chebMaxIter, eigMin, eigMax, fieldcomm);
+    #endif
   } else if (SolverType == "FGMRESBlockJacobi") {
     // FGMRES(20) with communication-free block-Jacobi preconditioner
     if (vct->getCartesian_rank() == 0)
@@ -2260,6 +2285,7 @@ void EMfields3D::gpuCalculateE(int cycle)
                                  20, 200, GMREStol, fieldcomm);
   } else {
     // Default: GMRES(20) solver
+    #ifdef CUDA_GRAPH
     gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                   d_xkrylovMaxwell.devPtr(), nMaxwell,
                   d_bkrylovMaxwell.devPtr(),
@@ -2269,6 +2295,18 @@ void EMfields3D::gpuCalculateE(int cycle)
                   fieldcomm, solverStream_,
                   h_gmresReduceLocal, h_gmresReduceGlobal,
                   h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY);
+    #else 
+    gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage,
+                  d_xkrylovMaxwell.devPtr(), nMaxwell,
+                  d_bkrylovMaxwell.devPtr(),
+                  20, 200, GMREStol,
+                  d_blasScratch,
+                  d_gmresV, d_gmresW, gmresVAlloc,
+                  fieldcomm, solverStream_,
+                  h_gmresReduceLocal, h_gmresReduceGlobal,
+                  h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY);
+    #endif
+
   }
   // Krylov → physical: Exth, Eyth, Ezth
   gpuSolver2Phys3(d_Exth.devPtr(), d_Eyth.devPtr(), d_Ezth.devPtr(),
@@ -2299,6 +2337,106 @@ void EMfields3D::gpuCalculateE(int cycle)
 // =========================================================================
 
 void EMfields3D::gpuCalculateB(int cycle)
+{
+  const Collective* col = &get_col();
+  const VirtualTopology3D* vct = &get_vct();
+  const Grid* grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+
+  if (vct->getCartesian_rank() == 0)
+    cout << "*** B CALCULATION [GPU] ***" << endl;
+
+  size_t centSize = (size_t)nxc * nyc * nzc;
+
+  // curl(Eth) → tempXC/YC/ZC
+  gpuCurlN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+             d_Exth.devPtr(), d_Eyth.devPtr(), d_Ezth.devPtr(),
+             nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+
+  // B^{n+1} = B^n - c*dt * curl(Eth)
+  gpuAddscale3(-c * dt,
+               d_Bxc.devPtr(), d_tempXC.devPtr(),
+               d_Byc.devPtr(), d_tempYC.devPtr(),
+               d_Bzc.devPtr(), d_tempZC.devPtr(), centSize, solverStream_);
+
+  // Communicate center B ghost cells (batched: 3 fields in 1 MPI round)
+#ifdef HALO_OVERLAP
+  {
+    cudaSolverType* bptrs[3] = { d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr() };
+    gpuBatchedHaloBeginExchange(bptrs, 3, nxc, nyc, nzc,
+                                true, false, false, false, solverStream_);
+
+    // Interior interpC2N while MPI is in flight
+    gpuInterpC2N_interior(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+    gpuInterpC2N_interior(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+    gpuInterpC2N_interior(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+
+    gpuBatchedHaloEndExchange(bptrs, 3, nxc, nyc, nzc,
+                              true, false, false, false, solverStream_);
+
+    // Mixed BC face application
+    gpuBCface(nxc, nyc, nzc, d_Bxc, col->bcBx[0], col->bcBx[1], col->bcBx[2], col->bcBx[3], col->bcBx[4], col->bcBx[5], &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_Byc, col->bcBy[0], col->bcBy[1], col->bcBy[2], col->bcBy[3], col->bcBy[4], col->bcBy[5], &_vct, solverStream_);
+    gpuBCface(nxc, nyc, nzc, d_Bzc, col->bcBz[0], col->bcBz[1], col->bcBz[2], col->bcBz[3], col->bcBz[4], col->bcBz[5], &_vct, solverStream_);
+  }
+
+  // Open boundary conditions on center-based B
+  gpuOpenBoundaryInflowB(d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr(), nxc, nyc, nzc);
+
+  // Case-specific fixes on center-based B
+  {
+    const string& simCase = col->getCase();
+    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+      gpuFixBcGEM();
+    if (simCase == "ForceFree")
+      gpuFixBforcefree();
+  }
+
+  // Boundary interpC2N (ghost + BC + fixup data now available)
+  gpuInterpC2N_boundary(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+#else
+  gpuCommunicateCenterBC_3mixed(nxc, nyc, nzc,
+      d_Bxc, col->bcBx, d_Byc, col->bcBy, d_Bzc, col->bcBz);
+
+  // Open boundary conditions on center-based B
+  gpuOpenBoundaryInflowB(d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr(), nxc, nyc, nzc);
+
+  // Case-specific fixes on center-based B
+  {
+    const string& simCase = col->getCase();
+    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+      gpuFixBcGEM();
+    if (simCase == "ForceFree")
+      gpuFixBforcefree();
+  }
+
+  // Interpolate center → node
+  gpuInterpC2N(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+#endif
+
+  // Communicate node B ghost cells (batched: 3 fields in 1 MPI round)
+  gpuCommunicateNodeBC_3mixed(nxn, nyn, nzn,
+      d_Bxn, col->bcBx, d_Byn, col->bcBy, d_Bzn, col->bcBz);
+
+  // Case-specific fixes on node-based B
+  {
+    const string& simCase = col->getCase();
+    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+      gpuFixBnGEM();
+  }
+
+  // Divergence cleaning: lap(PSI) = div(B), B = B - grad(PSI)
+  if (divBCorrection && cycle % divBCorrectionCycle == 0)
+    gpuApplyDivBCleaning();
+}
+
+void EMfields3D::gpuCalculateB_cuda_graph(int cycle)
 {
   const Collective* col = &get_col();
   const VirtualTopology3D* vct = &get_vct();

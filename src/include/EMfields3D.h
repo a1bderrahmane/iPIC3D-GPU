@@ -219,6 +219,10 @@ class EMfields3D                // :public Field
      */
     void calculateB(int cycle);
     /** @brief Apply divergence cleaning to the magnetic field. */
+    
+    void calculateB_cuda_graph(int cycle);
+    /** @brief Apply divergence cleaning to the magnetic field.It uses cuda graph to optimize kernel launching */
+
     void applyDivBCleaning();
     /** @brief Fix magnetic-field boundary values for the GEM challenge. */
     void fixBcGEM();

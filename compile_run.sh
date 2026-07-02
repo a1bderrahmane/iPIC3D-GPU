@@ -8,7 +8,7 @@ module load nvtop/2.0.2-gcc-11.3.0-why26pe
 
 rm -rd build
 mkdir build && cd build
-cmake .. -DUSE_ADIOS2=OFF -DUSE_HDF5=OFF -DCUDA_ARCH=80 -DGPU_SOLVER=ON -DHALO_OVERLAP=ON
+cmake .. -DUSE_ADIOS2=OFF -DUSE_HDF5=OFF -DCUDA_ARCH=80 -DGPU_SOLVER=ON -DHALO_OVERLAP=ON -DCUDA_GRAPH=OFF
 make -j
 cd ..
 export IPIC_FORCE_GPU_MPI=1

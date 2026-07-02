@@ -58,6 +58,8 @@ option(BENCH_MARK "Print tasks time" OFF)
 option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
 option(GPU_SOLVER "Run the entire field solver on GPU (requires CUDA-aware MPI)" OFF)
 option(HALO_OVERLAP "Enable halo-computation overlap in the GPU field solver (requires GPU_SOLVER)" OFF)
+option(CUDA_GRAPH "Enable cuda graph optimization (requires GPU_SOLVER)" OFF)
+
 option(BUILD_TESTING "Build unit tests" OFF)
 
 include(GNUInstallDirs)
@@ -296,6 +298,10 @@ if(HALO_OVERLAP)
   message(STATUS "Halo-computation overlap enabled for GPU field solver")
 endif()
 
+if(CUDA_GRAPH)
+  target_compile_definitions(iPIC3Dlib PUBLIC CUDA_GRAPH)
+  message(STATUS "Cuda Graph enabled for GPU field solver")
+endif()
 
 #
 # Executable declaration
@@ -387,6 +393,8 @@ else()
 endif()
 message(STATUS "  GPU solver                  : ${GPU_SOLVER}  (entire field solver on GPU, requires CUDA-aware MPI at runtime)")
 message(STATUS "  GPU halo overlap            : ${HALO_OVERLAP}  (overlap halo communication with computation in GPU field solver, requires GPU_SOLVER=ON)")
+message(STATUS "  CUDA GRAPH                  : ${CUDA_GRAPH}  (cuda graph optimization, requires GPU_SOLVER=ON)")
+
 message(STATUS "  HDF5 output                 : ${USE_HDF5}")
 message(STATUS "  HDF5_INCLUDE_DIRS           : ${HDF5_INCLUDE_DIRS}")
 message(STATUS "  HDF5_LIBRARIES              : ${HDF5_LIBRARIES}")

@@ -13,6 +13,8 @@ option(HIP_ON "Use HIP" OFF)
 # (blocking) fallback of gpuMaxwellImage_cuda_graph_refactored references
 # gpuLapN2N_3_finish, which does not exist, so OFF will not compile.
 option(HALO_OVERLAP "Enable overlapped halo exchange path" ON)
+option(CUDA_GRAPH "Enable cuda graph optimization (requires GPU_SOLVER)" OFF)
+
 set(CUDA_ARCH "75" CACHE STRING "CUDA compute capability to compile for")
 set(HIP_ARCH "gfx90a" CACHE STRING "HIP GPU architecture")
 # Keep this default in sync with TestInput::{x,y,z}len.
@@ -89,6 +91,10 @@ else()
     "HALO_OVERLAP is OFF: the blocking #else fallback in "
     "gpuMaxwellImage_cuda_graph_refactored references gpuLapN2N_3_finish "
     "and will not compile until that path is fixed.")
+endif()
+if(CUDA_GRAPH)
+  target_compile_definitions(iPIC3Dlib PUBLIC CUDA_GRAPH)
+  message(STATUS "Cuda Graph enabled for GPU field solver")
 endif()
 
 if(NOT HIP_ON)
