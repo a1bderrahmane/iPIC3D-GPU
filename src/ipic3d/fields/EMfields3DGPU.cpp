@@ -103,13 +103,19 @@ namespace
 
       const double median =
           (n % 2) ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
-
+      #ifdef CUDA_GRAPH
       fprintf(stderr,
               "[rank %d] gpuMaxwellImage_cuda_graph over %zu calls (ms):\n"
               "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
               "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
               rank, n, sum, mean, median, v.front(), v.back(), sd);
-
+      #else 
+      fprintf(stderr,
+              "[rank %d] gpuMaxwellImage over %zu calls (ms):\n"
+              "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
+              "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
+              rank, n, sum, mean, median, v.front(), v.back(), sd);
+      #endif
       // Raw per-call samples, one rank-local file, for later analysis.
       char fname[256];
       std::snprintf(fname, sizeof(fname),
@@ -814,6 +820,80 @@ void EMfields3D::gpuPerfectConductorRight(
 //    fieldB → d_divC   / d_poissonTemp / d_poissonIm
 //    fieldC → d_divBwork / d_divE_work / d_tempC
 // =========================================================================
+//
+void EMfields3D::gpuLapN2N_3_finish(GPUFieldArray3& lapA,
+                                    GPUFieldArray3& lapB,
+                                    GPUFieldArray3& lapC)
+{
+  const Grid* grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+
+#ifdef HALO_OVERLAP
+  // ---- Begin halo exchange: pack faces + post MPI ----
+  cudaSolverType* ptrs9[9] = { d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                       d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+                       d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr() };
+  gpuBatchedHaloBeginExchange(ptrs9, 9, nxc, nyc, nzc,
+                              true, false, false, false, solverStream_);
+
+  // ---- Interior divC2N while MPI is in flight ----
+  gpuDivC2N_interior(lapA.devPtr(),
+            d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_interior(lapB.devPtr(),
+            d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_interior(lapC.devPtr(),
+            d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+
+  // ---- End halo exchange: MPI_Waitall + unpack + edges/corners ----
+  gpuBatchedHaloEndExchange(ptrs9, 9, nxc, nyc, nzc,
+                            true, false, false, false, solverStream_);
+
+  // ---- BC face application (type 1 on all faces) ----
+  gpuBCface(nxc, nyc, nzc, d_tempXC,      1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempYC,      1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempZC,      1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divC,        1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_poissonTemp, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_poissonIm,   1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divBwork,    1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divE_work,   1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempC,       1,1,1,1,1,1, &_vct, solverStream_);
+
+  // ---- Boundary divC2N (ghost + BC data now available) ----
+  gpuDivC2N_boundary(lapA.devPtr(),
+            d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_boundary(lapB.devPtr(),
+            d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_boundary(lapC.devPtr(),
+            d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+#else
+  // ---- Original blocking path ----
+  gpuCommunicateCenterBC_9(nxc, nyc, nzc,
+      d_tempXC, d_tempYC, d_tempZC,
+      d_divC, d_poissonTemp, d_poissonIm,
+      d_divBwork, d_divE_work, d_tempC,
+      1, 1, 1, 1, 1, 1);
+
+  gpuDivC2N(lapA.devPtr(),
+            d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N(lapB.devPtr(),
+            d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N(lapC.devPtr(),
+            d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+            nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+#endif
+}
+
 void EMfields3D::gpuLapN2N_3_gradients(GPUFieldArray3 &fieldA,
                                        GPUFieldArray3 &fieldB,
                                        GPUFieldArray3 &fieldC)
@@ -1145,6 +1225,9 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
 }
 void EMfields3D::gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector)
 {
+
+  g_maxwellImageTimer.begin(solverStream_);
+
   const VirtualTopology3D* vct = &get_vct();
   const Grid* grid = &get_grid();
   double _invdx = grid->get_invdx();
@@ -1243,6 +1326,8 @@ void EMfields3D::gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector)
   gpuPhys2Solver3(d_im,
                   d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                   nxn, nyn, nzn, solverStream_);
+      g_maxwellImageTimer.end(solverStream_);
+
 }
 
 // =========================================================================

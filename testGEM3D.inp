@@ -33,7 +33,7 @@ delta = 0.5
     
 #  %%%%%%%%%%%%%%%%%%% TIME %%%%%%%%%%%%%%%%%%
 dt = 0.15          # dt = time step   
-ncycles = 15    # cycles
+ncycles = 400    # cycles
 th = 0.5          # th =   decentering parameter
 c = 1.0
 

@@ -589,6 +589,9 @@ class EMfields3D                // :public Field
     void gpuCalculateE(int cycle);
     /** GPU version of calculateB. */
     void gpuCalculateB(int cycle);
+    void gpuCalculateB_cuda_graph(int cycle);
+   // void gpu_CalculateB_cuda_graph(int cycle);
+
     /** GPU version of calculateHatFunctions. */
     void gpuCalculateHatFunctions();
     /** GPU MaxwellImage: A*x callback for GMRES (operates on device Krylov vectors). */
@@ -670,6 +673,9 @@ class EMfields3D                // :public Field
                      GPUFieldArray3& lapB, GPUFieldArray3& fieldB,
                      GPUFieldArray3& lapC, GPUFieldArray3& fieldC);
 void gpuLapN2N_3_gradients(GPUFieldArray3 &fieldA,
+                                       GPUFieldArray3 &fieldB,
+                                       GPUFieldArray3 &fieldC);
+void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
                                        GPUFieldArray3 &fieldB,
                                        GPUFieldArray3 &fieldC);
     // ---- GPU Solver: moment post-processing on GPU ----
