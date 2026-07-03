@@ -31,7 +31,7 @@
 #include "Alloc.h"
 #include "Basic.h"
 #include "mpi.h"
-
+#include <vector>
 #include "cudaTypeDef.cuh"
 #include "HeatFluxComponents.h"
 
@@ -594,6 +594,7 @@ class EMfields3D                // :public Field
 
     /** GPU version of calculateHatFunctions. */
     void gpuCalculateHatFunctions();
+    void gpuCalculateHatFunctions_cuda_graph();
     /** GPU MaxwellImage: A*x callback for GMRES (operates on device Krylov vectors). */
     void gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector);
     /** GPU MaxwellImage (local): communication-free A*x for use as preconditioner.
@@ -1143,6 +1144,7 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
     //  same MPI derived datatypes can be used with GPU-aware MPI by passing
     //  the device pointer instead of the host pointer.
     // =========================================================================
+#ifdef CUDA_GRAPH
     cudaGraphExec_t s1Exec_ = nullptr;
     cudaGraphExec_t s2Exec_ = nullptr;
     cudaGraphExec_t s5Exec_ = nullptr;
@@ -1150,6 +1152,13 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
     cudaGraphExec_t bFieldUpdateExec_ = nullptr;
     cudaGraphExec_t bInteriorExec_ = nullptr;
     cudaGraphExec_t bBcPostExec_ = nullptr;
+    cudaGraphExec_t hatInteriorExec_  = nullptr;  // HALO_OVERLAP: interior interpC2N x3 (species-independent)
+    cudaGraphExec_t hatBoundaryExec_  = nullptr;  // HALO_OVERLAP: BC faces + boundary interpC2N x3
+    cudaGraphExec_t hatBlockingExec_  = nullptr;  // blocking fallback: full interpC2N x3 (species-independent)
+    cudaGraphExec_t hatRhohatExec_    = nullptr;
+    std::vector<cudaGraphExec_t> hatPreExec_;     // per-species: divSymmTensorN2C + scale3
+    std::vector<cudaGraphExec_t> hatPostExec_;    // per-species: sum3 + PIdot
+#endif
     // Electric field (node-based)
     GPUFieldArray3 d_Ex, d_Ey, d_Ez;
     GPUFieldArray3 d_Exth, d_Eyth, d_Ezth;
@@ -1298,3 +1307,4 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
 typedef EMfields3D Field;
 
 #endif
+

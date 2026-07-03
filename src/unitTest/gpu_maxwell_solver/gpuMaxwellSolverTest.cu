@@ -15,7 +15,7 @@
 #include "Parameters.h"
 #include "VCtopology3D.h"
 #include "cudaTypeDef.cuh"
-
+#include <vector>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -537,7 +537,12 @@ void prepareManufacturedMoments(EMfields3D& fields) {
   fields.gpuSetZeroDerivedMoments();
   fields.gpuSumOverSpecies();
   fields.gpuInterpDensitiesN2C();
+  #ifdef CUDA_GRAPH
+  fields.gpuCalculateHatFunctions_cuda_graph();
+  #else
   fields.gpuCalculateHatFunctions();
+  #endif
+
 }
 
 void communicateElectricBoundaries(EMfields3D& fields, Grid3DCU& grid) {
@@ -758,3 +763,4 @@ int main(int argc, char** argv) {
   MPIdata::finalize_mpi();
   return exitCode;
 }
+

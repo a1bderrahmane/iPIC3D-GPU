@@ -35,8 +35,10 @@
 #include "Timing.h"
 #include "outputPrepare.h"
 #include "IOManager.h"
+#ifdef CUDA_GRAPH
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
+#endif
 #ifdef GPU_SOLVER
 #include "GPUFieldPacking.cuh"
 #endif
@@ -2213,7 +2215,11 @@ void c_Solver::MomentsAwait() {
   EMf->gpuInterpDensitiesN2C();
 
   // Phase 3: hat functions (Jhat, rhohat) — already GPU-implemented
+  #ifdef CUDA_GRAPH
+  EMf->gpuCalculateHatFunctions_cuda_graph();
+  #else
   EMf->gpuCalculateHatFunctions();
+  #endif
 
   // Record momentsPipelineDoneEvt at the tail of the solver stream so that
   // ScheduleHeatFlux() (next cycle, step 2) can gate its D2D copy of
@@ -2843,3 +2849,4 @@ void c_Solver::injectExosphereParticles()
     future.get();
   }
 }
+

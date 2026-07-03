@@ -93,7 +93,7 @@ else()
     "and will not compile until that path is fixed.")
 endif()
 if(CUDA_GRAPH)
-  target_compile_definitions(iPIC3Dlib PUBLIC CUDA_GRAPH)
+	target_compile_definitions(gpuMaxwellSolverTest PUBLIC CUDA_GRAPH)
   message(STATUS "Cuda Graph enabled for GPU field solver")
 endif()
 

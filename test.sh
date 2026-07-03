@@ -1,7 +1,7 @@
 
 cd src/unitTest/gpu_maxwell_solver/
 rm -rd build && mkdir build && cd build
-cmake .. -DUSE_ADIOS2=OFF -DUSE_HDF5=OFF -DCUDA_ARCH=80 -DGPU_SOLVER=ON -DHALO_OVERLAP=ON
+cmake .. -DUSE_ADIOS2=OFF -DUSE_HDF5=OFF -DCUDA_ARCH=80 -DGPU_SOLVER=ON -DHALO_OVERLAP=OFF -DCUDA_GRAPH=ON
 #make 2>&1 | tee build.log
 make -j
 export IPIC_FORCE_GPU_MPI=1

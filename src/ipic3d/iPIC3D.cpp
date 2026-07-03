@@ -25,7 +25,9 @@
 #include "TimeTasks.h"
 #include <stdio.h>
 #include <chrono>
+#ifdef CUDA_GRAPH
 #include <cuda_profiler_api.h>
+#endif
 
 #include "dataAnalysis.cuh"
 
