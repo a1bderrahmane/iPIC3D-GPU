@@ -2123,7 +2123,15 @@ void c_Solver::CalculateB(int cycle) {
   auto tB0 = std::chrono::high_resolution_clock::now();
 #ifdef GPU_SOLVER
   // Full GPU B solver — results stay in device arrays (d_Bxc, d_Bxn, ...)
+  #ifdef CUDA_GRAPH
+  #ifdef USE_NCCL
+  EMf->gpuCalculateB_nccl(cycle);
+  #else
+  EMf->gpuCalculateB_cuda_graph(cycle);
+  #endif
+  #else
   EMf->gpuCalculateB(cycle);
+  #endif
 #else
   // Legacy CPU B solver
   EMf->calculateB(cycle);
@@ -2216,7 +2224,11 @@ void c_Solver::MomentsAwait() {
 
   // Phase 3: hat functions (Jhat, rhohat) — already GPU-implemented
   #ifdef CUDA_GRAPH
+  #ifdef USE_NCCL
+  EMf->gpuCalculateHatFunctions_nccl();
+  #else
   EMf->gpuCalculateHatFunctions_cuda_graph();
+  #endif
   #else
   EMf->gpuCalculateHatFunctions();
   #endif

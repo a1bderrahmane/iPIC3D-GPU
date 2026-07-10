@@ -58,7 +58,8 @@ namespace
   struct MaxwellImageTimer
   {
     std::vector<double> ms;
-    std::chrono::steady_clock::time_point t0;
+    cudaEvent_t startEvt = nullptr;
+    cudaEvent_t stopEvt = nullptr;
     int rank = 0;
     bool inited = false;
 
@@ -68,17 +69,28 @@ namespace
         return;
       ms.reserve(1 << 16);
       rank = MPIdata::get_rank();
+      cudaErrChk(cudaEventCreate(&startEvt));
+      cudaErrChk(cudaEventCreate(&stopEvt));
       inited = true;
     }
+    // begin/end bracket work enqueued on `stream` with timing-enabled CUDA
+    // events rather than host std::chrono. cudaGraphLaunch (and the NCCL
+    // kernels it captures) is asynchronous, so a host-side chrono sandwich
+    // around it only measures launch overhead, not actual GPU execution
+    // time. Recording events *on the stream* and syncing on stopEvt in
+    // end() captures the true GPU-side elapsed time instead.
     void begin(cudaStream_t stream)
     {
       init();
-      t0 = std::chrono::steady_clock::now();
+      cudaErrChk(cudaEventRecord(startEvt, stream));
     }
     void end(cudaStream_t stream)
     {
-      auto t1 = std::chrono::steady_clock::now();
-      ms.push_back(std::chrono::duration<double, std::milli>(t1 - t0).count());
+      cudaErrChk(cudaEventRecord(stopEvt, stream));
+      cudaErrChk(cudaEventSynchronize(stopEvt));
+      float elapsed_ms = 0.0f;
+      cudaErrChk(cudaEventElapsedTime(&elapsed_ms, startEvt, stopEvt));
+      ms.push_back((double)elapsed_ms);
     }
 
     ~MaxwellImageTimer() { report(); } // runs at program exit
@@ -310,15 +322,84 @@ void EMfields3D::gpuSolverAllocate()
 
   // ---- Persistent batched halo-exchange buffers ----
   gpuAllocateHaloBuffers();
-
+  #if defined(CUDA_GRAPH) && defined(USE_NCCL)
+  gpuNcclInit();
+  #endif
   gpuSolverAllocated_ = true;
 }
+
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+void EMfields3D::gpuNcclInit()
+{
+  if (ncclInitialized_) return;
+
+  const VirtualTopology3D *vct = &get_vct();
+  MPI_Comm fieldcomm = vct->getFieldComm();
+
+  int rank, size;
+  MPI_Comm_rank(fieldcomm, &rank);
+  MPI_Comm_size(fieldcomm, &size);
+
+  // Bootstrap: rank 0 creates the unique ID, broadcasts over the SAME
+  // communicator your halo exchange already uses, so NCCL "rank" == MPI
+  // rank in fieldcomm and your existing vct->getX/Y/Zleft/right_neighbor()
+  // values can be used directly as NCCL peer ids.
+  ncclUniqueId id;
+  if (rank == 0) NCCLCHECK(ncclGetUniqueId(&id));
+  MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, fieldcomm);
+
+  NCCLCHECK(ncclCommInitRank(&fieldNcclComm_, size, id, rank));
+
+  // Peer ranks: identical values you already read for MPI_Isend/Irecv.
+  ncclPeerXL_ = vct->getXleft_neighbor();
+  ncclPeerXR_ = vct->getXright_neighbor();
+  ncclPeerYL_ = vct->getYleft_neighbor();
+  ncclPeerYR_ = vct->getYright_neighbor();
+  ncclPeerZL_ = vct->getZleft_neighbor();
+  ncclPeerZR_ = vct->getZright_neighbor();
+
+  // Secondary streams for the fork/join overlap pattern.
+  cudaErrChk(cudaStreamCreateWithFlags(&ncclCommStream_, cudaStreamNonBlocking));
+  cudaErrChk(cudaStreamCreateWithFlags(&interiorStream_, cudaStreamNonBlocking));
+  cudaErrChk(cudaEventCreateWithFlags(&ncclForkEvent_, cudaEventDisableTiming));
+  cudaErrChk(cudaEventCreateWithFlags(&ncclJoinEvent_,  cudaEventDisableTiming));
+
+  // first time they're seen inside a captured graph (requires NCCL >= 2.11).
+  setenv("NCCL_GRAPH_REGISTER", "1", 0);
+
+  ncclInitialized_ = true;
+}
+
+void EMfields3D::gpuNcclFree()
+{
+  if (!ncclInitialized_) return;
+  if (maxwellImageNcclExec_) { cudaGraphExecDestroy(maxwellImageNcclExec_); maxwellImageNcclExec_ = nullptr; }
+  if (ncclForkEvent_)  cudaEventDestroy(ncclForkEvent_);
+  if (ncclJoinEvent_)  cudaEventDestroy(ncclJoinEvent_);
+  if (ncclCommStream_) cudaStreamDestroy(ncclCommStream_);
+  if (interiorStream_) cudaStreamDestroy(interiorStream_);
+  ncclCommDestroy(fieldNcclComm_);
+  ncclInitialized_ = false;
+}
+#endif // CUDA_GRAPH && USE_NCCL
 
 void EMfields3D::gpuSolverFree()
 {
   if (!gpuSolverAllocated_)
     return;
 #ifdef CUDA_GRAPH
+  // Drain all outstanding work on solverStream_/interiorStream_ before
+  // tearing down anything below. gpuNcclFree() (called at the end of this
+  // block, after every cudaGraphExecDestroy) destroys the NCCL communicator
+  // and the shared fork/join events/streams that bNcclExec_ and every
+  // hatNcclExec_[is] graph reference internally -- destroying those graphs
+  // (or leaving graph-launched work in flight) after the comm/events/streams
+  // are gone is undefined behavior and was observed to hang at shutdown.
+  cudaErrChk(cudaStreamSynchronize(solverStream_));
+#ifdef USE_NCCL
+  if (interiorStream_)
+    cudaErrChk(cudaStreamSynchronize(interiorStream_));
+#endif
   if (s1Exec_)
   {
     cudaGraphExecDestroy(s1Exec_);
@@ -349,6 +430,13 @@ void EMfields3D::gpuSolverFree()
     cudaGraphExecDestroy(bBcPostExec_);
     bBcPostExec_ = nullptr;
   }
+#ifdef USE_NCCL
+  if (bNcclExec_)
+  {
+    cudaGraphExecDestroy(bNcclExec_);
+    bNcclExec_ = nullptr;
+  }
+#endif
   if (hatInteriorExec_) { cudaGraphExecDestroy(hatInteriorExec_); hatInteriorExec_ = nullptr; }
   if (hatBoundaryExec_) { cudaGraphExecDestroy(hatBoundaryExec_); hatBoundaryExec_ = nullptr; }
   if (hatBlockingExec_) { cudaGraphExecDestroy(hatBlockingExec_); hatBlockingExec_ = nullptr; }
@@ -357,6 +445,15 @@ void EMfields3D::gpuSolverFree()
   for (auto& g : hatPostExec_) if (g) cudaGraphExecDestroy(g);
   hatPreExec_.clear();
   hatPostExec_.clear();
+
+#ifdef USE_NCCL
+  for (auto& g : hatNcclExec_) if (g) cudaGraphExecDestroy(g);
+  hatNcclExec_.clear();
+
+  // Must run LAST: destroys fieldNcclComm_ and the shared fork/join
+  // events/streams that the graph execs above were captured against.
+  gpuNcclFree();
+#endif
   #endif
   // Electric field
   d_Ex.free();
@@ -1187,10 +1284,146 @@ void EMfields3D::gpuLapN2N_3(
 // =========================================================================
 //  GPU MaxwellImage:  im = A * vector  (Krylov ↔ Krylov)
 // =========================================================================
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+void EMfields3D::gpuMaxwellImage_nccl(cudaSolverType *d_im, cudaSolverType *d_vector)
+{
+ // gpuNcclInit();  // no-op after first call
+  g_maxwellImageTimer.begin(solverStream_);
+  const Grid *grid = &get_grid();
+  size_t nodeSize = (size_t)nxn * nyn * nzn;
+  
+  // ---- eager: Krylov -> physical (d_vector varies, cannot capture) ----
+  gpuSolver2Phys3(d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
+                  d_vector, nxn, nyn, nzn, solverStream_);
+
+  if (maxwellImageNcclExec_ == nullptr)
+    gpuBuildMaxwellImageNcclGraph(d_im);
+
+  nvtxRangePush("gpuMaxwellImage_nccl");
+  cudaGraphLaunch(maxwellImageNcclExec_, solverStream_);
+  nvtxRangePop();
+  g_maxwellImageTimer.end(solverStream_);
+}
+
+void EMfields3D::gpuBuildMaxwellImageNcclGraph(cudaSolverType *d_im)
+{
+  const VirtualTopology3D *vct = &get_vct();
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+  size_t nodeSize = (size_t)nxn * nyn * nzn;
+  cudaSolverType *d_divD = d_PHI.devPtr();
+
+  bool hasLeftX  = (vct->getXleft_neighbor()  == MPI_PROC_NULL && bcEMfaceXleft  == 0);
+  bool hasRightX = (vct->getXright_neighbor() == MPI_PROC_NULL && bcEMfaceXright == 0);
+  bool hasLeftY  = (vct->getYleft_neighbor()  == MPI_PROC_NULL && bcEMfaceYleft  == 0);
+  bool hasRightY = (vct->getYright_neighbor() == MPI_PROC_NULL && bcEMfaceYright == 0);
+  bool hasLeftZ  = (vct->getZleft_neighbor()  == MPI_PROC_NULL && bcEMfaceZleft  == 0);
+  bool hasRightZ = (vct->getZright_neighbor() == MPI_PROC_NULL && bcEMfaceZright == 0);
+
+  // NCCL P2P capture requires thread-local capture mode.
+  cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
+
+  // ---- g_pre: zero scratch, gradients, MUdot, div(D) -> d_PHI ----
+  cudaSolverType *zptrs[9] = {d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                              d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                              d_Dx.devPtr(), d_Dy.devPtr(), d_Dz.devPtr()};
+  gpuSetAll0_N(zptrs, 9, nodeSize, solverStream_);
+  gpuLapN2N_3_gradients(d_vectX, d_vectY, d_vectZ);
+  gpuMUdot(d_Dx, d_Dy, d_Dz, d_vectX, d_vectY, d_vectZ);
+  gpuDivN2C(d_divD, d_Dx.devPtr(), d_Dy.devPtr(), d_Dz.devPtr(),
+            nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+
+  // ---- Fork: interior compute on interiorStream_ overlaps NCCL comm on
+  //      solverStream_. Both forks are recorded into the SAME graph because
+  //      both streams are actively capturing (joined to solverStream_'s
+  //      capture via the event below — this is standard multi-stream graph
+  //      capture, not a separate graph). ----
+  cudaEventRecord(ncclForkEvent_, solverStream_);
+  cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0);
+
+  cudaSolverType *ptrs10[10] = {
+      d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+      d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+      d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+      d_divD};
+
+  // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
+  gpuBatchedHaloExchangeNCCL(ptrs10, 10, nxc, nyc, nzc,
+                             /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false,
+                             solverStream_);
+
+  // ---- Branch B (interiorStream_): interior divC2N + gradC2N, overlaps
+  //      the NCCL send/recv above ----
+  gpuDivC2N_interior(d_imageX.devPtr(), d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, interiorStream_);
+  gpuDivC2N_interior(d_imageY.devPtr(), d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, interiorStream_);
+  gpuDivC2N_interior(d_imageZ.devPtr(), d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, interiorStream_);
+  gpuGradC2N_interior(d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                      d_divD, nxn, nyn, nzn, _invdx, _invdy, _invdz, interiorStream_);
+
+  // ---- Join: both branches must finish before boundary compute ----
+  cudaEventRecord(ncclJoinEvent_, interiorStream_);
+  cudaStreamWaitEvent(solverStream_, ncclJoinEvent_, 0);
+
+  // ---- g_bc_post: BC faces + boundary divC2N/gradC2N + arithmetic + BCs ----
+  gpuBCface(nxc, nyc, nzc, d_tempXC, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempYC, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempZC, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divC, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_poissonTemp, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_poissonIm, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divBwork, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_divE_work, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_tempC, 1,1,1,1,1,1, &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_PHI, 2,2,2,2,2,2, &_vct, solverStream_);
+
+  gpuDivC2N_boundary(d_imageX.devPtr(), d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_boundary(d_imageY.devPtr(), d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuDivC2N_boundary(d_imageZ.devPtr(), d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+                     nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+  gpuGradC2N_boundary(d_tempX.devPtr(), d_tempY.devPtr(), d_tempZ.devPtr(),
+                      d_divD, nxn, nyn, nzn, _invdx, _invdy, _invdz, solverStream_);
+
+  gpuNeg3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(), nodeSize, solverStream_);
+  gpuSub3(d_imageX.devPtr(), d_tempX.devPtr(), d_imageY.devPtr(), d_tempY.devPtr(),
+          d_imageZ.devPtr(), d_tempZ.devPtr(), nodeSize, solverStream_);
+  gpuScale3(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(), delt*delt, nodeSize, solverStream_);
+  gpuSumAddTwo3(d_imageX.devPtr(), d_Dx.devPtr(), d_vectX.devPtr(),
+                d_imageY.devPtr(), d_Dy.devPtr(), d_vectY.devPtr(),
+                d_imageZ.devPtr(), d_Dz.devPtr(), d_vectZ.devPtr(),
+                nodeSize, solverStream_);
+
+  if (hasLeftX)  gpuPerfectConductorLeft (d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+  if (hasRightX) gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 0);
+  if (hasLeftY)  gpuPerfectConductorLeft (d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+  if (hasRightY) gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 1);
+  if (hasLeftZ)  gpuPerfectConductorLeft (d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+  if (hasRightZ) gpuPerfectConductorRight(d_imageX, d_imageY, d_imageZ, d_vectX, d_vectY, d_vectZ, 2);
+
+  if (get_col().getApplyInflowBcsEImage())
+    gpuOpenBoundaryInflowEImage(d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                                d_vectX.devPtr(), d_vectY.devPtr(), d_vectZ.devPtr(),
+                                nxn, nyn, nzn);
+
+  gpuPhys2Solver3(d_im, d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
+                  nxn, nyn, nzn, solverStream_);
+
+  cudaGraph_t g;
+  cudaStreamEndCapture(solverStream_, &g);
+  cudaGraphInstantiate(&maxwellImageNcclExec_, g, NULL, NULL, 0);
+  cudaGraphDestroy(g);
+}
+#endif // CUDA_GRAPH && USE_NCCL
 void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cudaSolverType *d_vector)
 {
   #ifdef CUDA_GRAPH
-  g_maxwellImageTimer.begin(solverStream_);
+ // g_maxwellImageTimer.begin(solverStream_);
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
@@ -1457,13 +1690,13 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
   /* gpuPhys2Solver3(d_im,
                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                nxn, nyn, nzn, solverStream_);*/
-  g_maxwellImageTimer.end(solverStream_);
+ // g_maxwellImageTimer.end(solverStream_);
   #endif
 }
 void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
 {
 
-  g_maxwellImageTimer.begin(solverStream_);
+ // g_maxwellImageTimer.begin(solverStream_);
   #ifdef CUDA_GRAPH
   nvtxRangePush("gpuMaxwellImage");
   #endif
@@ -1569,7 +1802,7 @@ void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
   nvtxRangePop();
   #endif
 
-  g_maxwellImageTimer.end(solverStream_);
+ // g_maxwellImageTimer.end(solverStream_);
 }
 
 // =========================================================================
@@ -2573,7 +2806,18 @@ void EMfields3D::gpuFGMRES_BlockJacobiPrecond(
 
   blockJacobiDinvStale = true;
   gpuEnsureFGMRESWorkspace(m, n);
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+  gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage_nccl,
+                 &EMfields3D::gpuBlockJacobiPrecond,
+                 d_x, n, d_b, m, max_iter, tol,
+                 d_blasScratch,
+                 d_gmresV, d_gmresW, gmresVAlloc,
+                 d_fgmresZ, fgmresZAlloc,
+                 fieldcomm, solverStream_,
+                 h_gmresReduceLocal, h_gmresReduceGlobal,
+                 h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY,
+                 "FGMRES+BlockJacobi");
+#elif defined(CUDA_GRAPH)
   gpuFGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                  &EMfields3D::gpuBlockJacobiPrecond,
                  d_x, n, d_b, m, max_iter, tol,
@@ -2636,7 +2880,10 @@ void EMfields3D::gpuCalculateE(int cycle)
     double eigMax = chebEigMax;
     if (eigMax <= 0.0)
     {
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+      eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage_nccl,
+                                        nMaxwell, 20, fieldcomm);
+#elif defined(CUDA_GRAPH)
       eigMax = gpuEstimateMaxEigenvalue(&EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                                         nMaxwell, 20, fieldcomm);
 #else
@@ -2644,7 +2891,12 @@ void EMfields3D::gpuCalculateE(int cycle)
                                         nMaxwell, 20, fieldcomm);
 #endif
     }
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    gpuChebyshevSolve(d_xkrylovMaxwell.devPtr(), nMaxwell,
+                      d_bkrylovMaxwell.devPtr(),
+                      &EMfields3D::gpuMaxwellImage_nccl,
+                      chebMaxIter, eigMin, eigMax, fieldcomm);
+#elif defined(CUDA_GRAPH)
     gpuChebyshevSolve(d_xkrylovMaxwell.devPtr(), nMaxwell,
                       d_bkrylovMaxwell.devPtr(),
                       &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
@@ -2668,7 +2920,17 @@ void EMfields3D::gpuCalculateE(int cycle)
   else
   {
 // Default: GMRES(20) solver
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage_nccl,
+                  d_xkrylovMaxwell.devPtr(), nMaxwell,
+                  d_bkrylovMaxwell.devPtr(),
+                  20, 200, GMREStol,
+                  d_blasScratch,
+                  d_gmresV, d_gmresW, gmresVAlloc,
+                  fieldcomm, solverStream_,
+                  h_gmresReduceLocal, h_gmresReduceGlobal,
+                  h_gmresH, h_gmresG, h_gmresCS, h_gmresSN, h_gmresY);
+#elif defined(CUDA_GRAPH)
     gpuGMRES_impl(this, &EMfields3D::gpuMaxwellImage_cuda_graph_refactored,
                   d_xkrylovMaxwell.devPtr(), nMaxwell,
                   d_bkrylovMaxwell.devPtr(),
@@ -2973,12 +3235,125 @@ void EMfields3D::gpuCalculateB_cuda_graph(int cycle)
 #endif
 }
 
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+// =========================================================================
+//  GPU calculateB (NCCL): same overall structure as
+//  gpuCalculateB_cuda_graph(), but the center-B halo exchange uses NCCL
+//  point-to-point (gpuBatchedHaloExchangeNCCL) instead of MPI. Since NCCL
+//  calls are stream-ordered and graph-capturable, the whole per-cycle step
+//  (field update + halo + interior/boundary interp + BC/fixups) is captured
+//  as a SINGLE graph, replayed every cycle -- no eager/uncapturable
+//  begin/end split is needed the way HALO_OVERLAP's MPI path requires.
+// =========================================================================
+void EMfields3D::gpuBuildBNcclGraph()
+{
+  const Collective *col = &get_col();
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+
+  size_t centSize = (size_t)nxc * nyc * nzc;
+
+  cudaErrChk(cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal));
+
+  // ---- field update: curl(Eth) -> tempXC/YC/ZC, then B -= c*dt*curl(Eth) ----
+  gpuCurlN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+             d_Exth.devPtr(), d_Eyth.devPtr(), d_Ezth.devPtr(),
+             nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+  gpuAddscale3(-c * dt,
+               d_Bxc.devPtr(), d_tempXC.devPtr(),
+               d_Byc.devPtr(), d_tempYC.devPtr(),
+               d_Bzc.devPtr(), d_tempZC.devPtr(), centSize, solverStream_);
+
+  // ---- Fork: interior interpC2N on interiorStream_ overlaps the NCCL
+  //      send/recv on solverStream_. Both forks land in the same graph
+  //      because both streams are actively capturing (joined to
+  //      solverStream_'s capture via ncclForkEvent_/ncclJoinEvent_). ----
+  cudaErrChk(cudaEventRecord(ncclForkEvent_, solverStream_));
+  cudaErrChk(cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0));
+
+  // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
+  cudaSolverType *bptrs[3] = {d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr()};
+  gpuBatchedHaloExchangeNCCL(bptrs, 3, nxc, nyc, nzc,
+                             /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false, solverStream_);
+
+  // ---- Branch B (interiorStream_): interior interpC2N, overlaps the NCCL
+  //      send/recv above ----
+  gpuInterpC2N_interior(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, interiorStream_);
+  gpuInterpC2N_interior(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, interiorStream_);
+  gpuInterpC2N_interior(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, interiorStream_);
+
+  // ---- Join: both branches must finish before boundary compute ----
+  cudaErrChk(cudaEventRecord(ncclJoinEvent_, interiorStream_));
+  cudaErrChk(cudaStreamWaitEvent(solverStream_, ncclJoinEvent_, 0));
+
+  // ---- BC faces + open-boundary inflow + case-specific fixups on center B,
+  //      then boundary interpC2N (needs ghost + BC + fixup data) ----
+  gpuBCface(nxc, nyc, nzc, d_Bxc, col->bcBx[0], col->bcBx[1], col->bcBx[2], col->bcBx[3], col->bcBx[4], col->bcBx[5], &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_Byc, col->bcBy[0], col->bcBy[1], col->bcBy[2], col->bcBy[3], col->bcBy[4], col->bcBy[5], &_vct, solverStream_);
+  gpuBCface(nxc, nyc, nzc, d_Bzc, col->bcBz[0], col->bcBz[1], col->bcBz[2], col->bcBz[3], col->bcBz[4], col->bcBz[5], &_vct, solverStream_);
+
+  gpuOpenBoundaryInflowB(d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr(), nxc, nyc, nzc);
+
+  {
+    const string &simCase = col->getCase();
+    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+      gpuFixBcGEM();
+    if (simCase == "ForceFree")
+      gpuFixBforcefree();
+  }
+
+  gpuInterpC2N_boundary(d_Bxn.devPtr(), d_Bxc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_Byn.devPtr(), d_Byc.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_Bzn.devPtr(), d_Bzc.devPtr(), nxn, nyn, nzn, solverStream_);
+
+  cudaGraph_t g;
+  cudaErrChk(cudaStreamEndCapture(solverStream_, &g));
+  cudaErrChk(cudaGraphInstantiate(&bNcclExec_, g, NULL, NULL, 0));
+  cudaErrChk(cudaGraphDestroy(g));
+}
+
+void EMfields3D::gpuCalculateB_nccl(int cycle)
+{
+  const Collective *col = &get_col();
+  const VirtualTopology3D *vct = &get_vct();
+
+  if (vct->getCartesian_rank() == 0)
+    cout << "*** B CALCULATION [GPU] ***" << endl;
+
+  if (bNcclExec_ == nullptr)
+    gpuBuildBNcclGraph();
+
+  nvtxRangePush("gB_nccl");
+  cudaErrChk(cudaGraphLaunch(bNcclExec_, solverStream_));
+  nvtxRangePop();
+
+  // Communicate node B ghost cells (batched: 3 fields in 1 MPI round) --
+  // eager, unrelated to the NCCL center-B halo captured above.
+  gpuCommunicateNodeBC_3mixed(nxn, nyn, nzn,
+                              d_Bxn, col->bcBx, d_Byn, col->bcBy, d_Bzn, col->bcBz);
+
+  // Case-specific fixes on node-based B
+  {
+    const string &simCase = col->getCase();
+    if (simCase == "GEM" || simCase == "GEMnoPert" || simCase == "GEMDoubleHarris")
+      gpuFixBnGEM();
+  }
+
+  // Divergence cleaning: lap(PSI) = div(B), B = B - grad(PSI)
+  if (divBCorrection && cycle % divBCorrectionCycle == 0)
+    gpuApplyDivBCleaning();
+}
+#endif // CUDA_GRAPH && USE_NCCL
+
 // =========================================================================
 //  GPU calculateHatFunctions: compute Jhat and rhohat
 // =========================================================================
 void EMfields3D::gpuCalculateHatFunctions_cuda_graph()
 {
   #ifdef CUDA_GRAPH
+ // g_maxwellImageTimer.begin(solverStream_);
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
@@ -3141,10 +3516,147 @@ void EMfields3D::gpuCalculateHatFunctions_cuda_graph()
   nvtxRangePop();
   // Communicate rhoh
   gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
+ // g_maxwellImageTimer.end(solverStream_);
   #endif
 }
+
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+// =========================================================================
+//  GPU calculateHatFunctions (NCCL): same overall structure as
+//  gpuCalculateHatFunctions_cuda_graph(), but the per-species tensor halo
+//  exchange uses NCCL point-to-point (gpuBatchedHaloExchangeNCCL) instead of
+//  MPI. Since NCCL calls are stream-ordered and graph-capturable, the whole
+//  per-species step (pre + halo + interior/boundary interp + post) is
+//  captured as a SINGLE graph per species, replayed every call — no
+//  eager/uncapturable begin/end split is needed the way HALO_OVERLAP's MPI
+//  path requires.
+// =========================================================================
+void EMfields3D::gpuBuildHatNcclGraph(int is)
+{
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+
+  size_t nodeSize = (size_t)nxn * nyn * nzn;
+  size_t centSize = (size_t)nxc * nyc * nzc;
+
+  cudaErrChk(cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal));
+
+  // ---- pre: divSymmTensorN2C + scale3 ----
+  gpuDivSymmTensorN2C(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+                      d_pXXsn.speciesPtr(is), d_pXYsn.speciesPtr(is), d_pXZsn.speciesPtr(is),
+                      d_pYYsn.speciesPtr(is), d_pYZsn.speciesPtr(is), d_pZZsn.speciesPtr(is),
+                      nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+  gpuScale3(d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+            -dt / 2.0, centSize, solverStream_);
+
+  // ---- Fork: interior interpC2N on interiorStream_ overlaps the NCCL
+  //      send/recv on solverStream_. Both forks land in the same graph
+  //      because both streams are actively capturing (joined to
+  //      solverStream_'s capture via ncclForkEvent_/ncclJoinEvent_). ----
+  cudaErrChk(cudaEventRecord(ncclForkEvent_, solverStream_));
+  cudaErrChk(cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0));
+
+  // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
+  cudaSolverType *hatPtrs[3] = {d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr()};
+  gpuBatchedHaloExchangeNCCL(hatPtrs, 3, nxc, nyc, nzc,
+                             /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false, solverStream_);
+
+  // ---- Branch B (interiorStream_): interior interpC2N, overlaps the NCCL
+  //      send/recv above ----
+  gpuInterpC2N_interior(d_tempXN.devPtr(), d_tempXC.devPtr(), nxn, nyn, nzn, interiorStream_);
+  gpuInterpC2N_interior(d_tempYN.devPtr(), d_tempYC.devPtr(), nxn, nyn, nzn, interiorStream_);
+  gpuInterpC2N_interior(d_tempZN.devPtr(), d_tempZC.devPtr(), nxn, nyn, nzn, interiorStream_);
+
+  // ---- Join: both branches must finish before boundary compute ----
+  cudaErrChk(cudaEventRecord(ncclJoinEvent_, interiorStream_));
+  cudaErrChk(cudaStreamWaitEvent(solverStream_, ncclJoinEvent_, 0));
+
+  // ---- boundary: BC faces + boundary interpC2N ----
+  gpuBCface_P(nxc, nyc, nzc, d_tempXC, 2, 2, 2, 2, 2, 2, &get_vct(), solverStream_);
+  gpuBCface_P(nxc, nyc, nzc, d_tempYC, 2, 2, 2, 2, 2, 2, &get_vct(), solverStream_);
+  gpuBCface_P(nxc, nyc, nzc, d_tempZC, 2, 2, 2, 2, 2, 2, &get_vct(), solverStream_);
+  gpuInterpC2N_boundary(d_tempXN.devPtr(), d_tempXC.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_tempYN.devPtr(), d_tempYC.devPtr(), nxn, nyn, nzn, solverStream_);
+  gpuInterpC2N_boundary(d_tempZN.devPtr(), d_tempZC.devPtr(), nxn, nyn, nzn, solverStream_);
+
+  // ---- post: sum3 + PIdot ----
+  gpuSum3(d_tempXN.devPtr(), d_Jxs.speciesPtr(is),
+          d_tempYN.devPtr(), d_Jys.speciesPtr(is),
+          d_tempZN.devPtr(), d_Jzs.speciesPtr(is), nodeSize, solverStream_);
+  gpuPIdot(d_Jxh, d_Jyh, d_Jzh, d_tempXN, d_tempYN, d_tempZN, is);
+
+  cudaGraph_t g;
+  cudaErrChk(cudaStreamEndCapture(solverStream_, &g));
+  cudaErrChk(cudaGraphInstantiate(&hatNcclExec_[is], g, NULL, NULL, 0));
+  cudaErrChk(cudaGraphDestroy(g));
+}
+
+void EMfields3D::gpuCalculateHatFunctions_nccl()
+{
+  const Grid *grid = &get_grid();
+  double _invdx = grid->get_invdx();
+  double _invdy = grid->get_invdy();
+  double _invdz = grid->get_invdz();
+
+  size_t nodeSize = (size_t)nxn * nyn * nzn;
+  size_t centSize = (size_t)nxc * nyc * nzc;
+
+  // Lazy (re)size per-species graph slots -- addresses returned by
+  // speciesPtr(is) are fixed for the lifetime of the run, so once a
+  // slot is captured it is valid to replay on every subsequent call.
+  if ((int)hatNcclExec_.size() != ns)
+    hatNcclExec_.assign(ns, nullptr);
+
+  // Smooth rhoc (eager, MPI-based -- unrelated to the NCCL tensor halo below)
+  gpuSmooth(d_rhoc, 0);
+
+  // Initialise Jxh/Jyh/Jzh = 0
+  cudaSolverType *jptrs[3] = {d_Jxh.devPtr(), d_Jyh.devPtr(), d_Jzh.devPtr()};
+  gpuSetAll0_N(jptrs, 3, nodeSize, solverStream_);
+
+  for (int is = 0; is < ns; is++)
+  {
+    if (hatNcclExec_[is] == nullptr)
+      gpuBuildHatNcclGraph(is);
+
+    nvtxRangePush("g_hat_nccl");
+    cudaErrChk(cudaGraphLaunch(hatNcclExec_[is], solverStream_));
+    nvtxRangePop();
+  }
+
+  gpuSmooth3(d_Jxh, d_Jyh, d_Jzh, 1);
+
+  if (hatRhohatExec_ == nullptr)
+  {
+    cudaGraph_t grh;
+    cudaErrChk(cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal));
+    gpuDivN2C(d_tempXC.devPtr(),
+              d_Jxh.devPtr(), d_Jyh.devPtr(), d_Jzh.devPtr(),
+              nxc, nyc, nzc, _invdx, _invdy, _invdz, solverStream_);
+    gpuScale(d_tempXC.devPtr(), -dt * th, centSize, solverStream_);
+    gpuSum(d_tempXC.devPtr(), d_rhoc.devPtr(), centSize, solverStream_);
+    gpuEq(d_rhoh.devPtr(), d_tempXC.devPtr(), centSize, solverStream_);
+    cudaErrChk(cudaStreamEndCapture(solverStream_, &grh));
+    cudaErrChk(cudaGraphInstantiate(&hatRhohatExec_, grh, NULL, NULL, 0));
+    cudaErrChk(cudaGraphDestroy(grh));
+  }
+  nvtxRangePush("g_hat_rhohat");
+  cudaErrChk(cudaGraphLaunch(hatRhohatExec_, solverStream_));
+  nvtxRangePop();
+
+  // Communicate rhoh
+  gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
+}
+#endif // CUDA_GRAPH && USE_NCCL
+
 void EMfields3D::gpuCalculateHatFunctions()
 {
+ // #ifdef CUDA_GRAPH
+ // nvtxRangePush("hat_begin");
+ // #endif
+ // g_maxwellImageTimer.begin(solverStream_);
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
@@ -3226,6 +3738,10 @@ void EMfields3D::gpuCalculateHatFunctions()
 
   // Communicate rhoh
   gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
+ // g_maxwellImageTimer.end(solverStream_);
+ // #ifdef CUDA_GRAPH
+ // nvtxRangePop();
+  //#endif
 }
 
 // =========================================================================

@@ -38,6 +38,9 @@
 #ifdef GPU_SOLVER
 #include "GPUFieldArray.cuh"
 #include "GPUHaloComm.cuh"
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+#include "GPUNcclTypeDef.cuh" // for ncclComm_t, used below
+#endif
 #endif
 
 // dimension of vectors used in fieldForPcls
@@ -591,10 +594,26 @@ class EMfields3D                // :public Field
     void gpuCalculateB(int cycle);
     void gpuCalculateB_cuda_graph(int cycle);
    // void gpu_CalculateB_cuda_graph(int cycle);
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    /** NCCL-based twin of gpuCalculateB_cuda_graph(): the center-B halo
+     *  exchange uses gpuBatchedHaloExchangeNCCL instead of MPI, letting the
+     *  whole per-cycle step (field update + halo + interior/boundary interp
+     *  + BC/fixups) live in a single captured graph. */
+    void gpuCalculateB_nccl(int cycle);
+    void gpuBuildBNcclGraph(); // capture-time builder, called once (lazy)
+#endif
 
     /** GPU version of calculateHatFunctions. */
     void gpuCalculateHatFunctions();
     void gpuCalculateHatFunctions_cuda_graph();
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    /** NCCL-based twin of gpuCalculateHatFunctions_cuda_graph(): the
+     *  per-species tensor halo exchange uses gpuBatchedHaloExchangeNCCL
+     *  instead of MPI, letting the whole per-species step (pre + halo +
+     *  interior/boundary interp + post) live in a single captured graph. */
+    void gpuCalculateHatFunctions_nccl();
+    void gpuBuildHatNcclGraph(int is); // capture-time builder, called once per species (lazy)
+#endif
     /** GPU MaxwellImage: A*x callback for GMRES (operates on device Krylov vectors). */
     void gpuMaxwellImage(cudaSolverType* d_im, cudaSolverType* d_vector);
     /** GPU MaxwellImage (local): communication-free A*x for use as preconditioner.
@@ -604,6 +623,12 @@ class EMfields3D                // :public Field
     /** GPU MaxwellSource: build RHS of Maxwell system (result in device Krylov vector). */
     void gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cudaSolverType *d_vector);
     void gpuMaxwellSource(cudaSolverType* d_bkrylov);
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    void gpuNcclInit();                         // one-time comm + stream + event setup
+    void gpuMaxwellImage_nccl(cudaSolverType *d_im, cudaSolverType *d_vector);
+    void gpuBuildMaxwellImageNcclGraph(cudaSolverType *d_im); // capture-time builder, called once (lazy)
+    void gpuNcclFree();                          // teardown
+#endif
 
     // ---- GPU Chebyshev Semi-Iterative Solver ----
     /** Full Chebyshev solver (with MPI communication).
@@ -705,7 +730,13 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
                                 bool isCenterFlag, bool isFaceOnlyFlag,
                                 bool needInterp, bool isParticle,
                                 cudaStream_t stream);
-
+#ifdef CUDA_GRAPH
+    void gpuBatchedHaloExchangeNCCL(
+      cudaSolverType** h_fieldPtrs, int nFields,
+      int nx, int ny, int nz,
+      bool isCenterFlag, bool isFaceOnlyFlag,
+      cudaStream_t stream);
+#endif
 #ifdef HALO_OVERLAP
     /** Phase 1 of split halo exchange: pack boundary faces, post
      *  non-blocking MPI sends/receives, self-copy periodic faces.
@@ -1158,6 +1189,31 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
     cudaGraphExec_t hatRhohatExec_    = nullptr;
     std::vector<cudaGraphExec_t> hatPreExec_;     // per-species: divSymmTensorN2C + scale3
     std::vector<cudaGraphExec_t> hatPostExec_;    // per-species: sum3 + PIdot
+#ifdef USE_NCCL
+    cudaGraphExec_t bNcclExec_ = nullptr;   // fused field-update+NCCL halo+interp+BC graph (gpuCalculateB_nccl)
+    std::vector<cudaGraphExec_t> hatNcclExec_;    // per-species: fused pre+NCCL halo+interp+post (gpuCalculateHatFunctions_nccl)
+    ///////////////////// NCCL ///////////////////////////////
+    // ---- NCCL communicator + single-graph Maxwell-image state ----
+  ncclComm_t   fieldNcclComm_   = nullptr;   // one comm, mirrors vct->getFieldComm()
+  bool         ncclInitialized_ = false;
+
+  // Peer ranks for the 6 face directions, resolved once at init
+  // (identical values to the MPI ranks already used by gpuBatchedHaloExchange)
+  int ncclPeerXL_ = -1, ncclPeerXR_ = -1;
+  int ncclPeerYL_ = -1, ncclPeerYR_ = -1;
+  int ncclPeerZL_ = -1, ncclPeerZR_ = -1;
+
+  // Single fused graph for gpuMaxwellImage_nccl
+  cudaGraphExec_t maxwellImageNcclExec_ = nullptr;
+
+  // Secondary stream + events for the fork/join overlap pattern,
+  // captured as part of the same graph.
+  cudaStream_t ncclCommStream_ = nullptr;   // NCCL send/recv runs here
+  cudaEvent_t  ncclForkEvent_  = nullptr;   // main stream -> comm/interior streams
+  cudaEvent_t  ncclJoinEvent_  = nullptr;   // comm/interior streams -> main stream
+  cudaStream_t interiorStream_ = nullptr;   // interior compute runs here (overlaps NCCL)
+#endif // USE_NCCL
+
 #endif
     // Electric field (node-based)
     GPUFieldArray3 d_Ex, d_Ey, d_Ez;
