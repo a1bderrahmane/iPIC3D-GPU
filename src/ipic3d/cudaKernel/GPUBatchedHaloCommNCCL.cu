@@ -11,9 +11,14 @@
  * without a host sync). This is what makes the whole function safe to
  * record inside a single cudaStreamBeginCapture/EndCapture block.
  *
- * Reuses the exact same persistent device buffers (d_haloBuf_send_[6],
- * d_haloBuf_recv_[6], d_ptrArray_, h_ptrArray_) allocated by
- * gpuAllocateHaloBuffers() in EMfields3DGPU.cpp — no new allocations here.
+ * Reuses the persistent send/recv buffers (d_haloBuf_send_[6],
+ * d_haloBuf_recv_[6]) allocated by gpuAllocateHaloBuffers() in
+ * EMfields3DGPU.cpp. It deliberately does NOT use the shared
+ * h_ptrArray_/d_ptrArray_ staging pair: a captured H2D copy from that
+ * buffer would re-read it at every graph replay, and every eager MPI
+ * batched exchange rewrites it between replays. Callers instead pass a
+ * per-graph immutable DEVICE pointer array (see gpuMakeNcclPtrArray),
+ * prepared before capture.
  *
  * isParticle / needInterp are NOT supported here: this path is field-only
  * (Maxwell image, calculateB, calculateHatFunctions). Particle-moment halo
@@ -107,8 +112,23 @@ static inline void launchUnpack2D_(
 //    - ncclSend/ncclRecv (wrapped in ncclGroupStart/End) instead of
 //      MPI_Isend/Irecv/Waitall
 // =========================================================================
+// Allocate + fill a persistent device array of field pointers. Synchronous;
+// must be called BEFORE stream capture begins. The returned array must stay
+// alive for as long as any graph captured around a gpuBatchedHaloExchangeNCCL
+// call that uses it exists (the pack/unpack kernels dereference it at every
+// replay).
+cudaSolverType** EMfields3D::gpuMakeNcclPtrArray(cudaSolverType* const* h_fieldPtrs, int nFields)
+{
+    assert(nFields > 0 && nFields <= HALO_MAX_BATCH);
+    cudaSolverType** d_arr = nullptr;
+    cudaErrChk(cudaMalloc(&d_arr, nFields * sizeof(cudaSolverType*)));
+    cudaErrChk(cudaMemcpy(d_arr, h_fieldPtrs, nFields * sizeof(cudaSolverType*),
+                          cudaMemcpyHostToDevice));
+    return d_arr;
+}
+
 void EMfields3D::gpuBatchedHaloExchangeNCCL(
-    cudaSolverType** h_fieldPtrs,
+    cudaSolverType* const* d_fieldPtrs,
     int nFields,
     int nx, int ny, int nz,
     bool isCenterFlag,
@@ -122,11 +142,6 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
     const int xlN = ncclPeerXL_, xrN = ncclPeerXR_;
     const int ylN = ncclPeerYL_, yrN = ncclPeerYR_;
     const int zlN = ncclPeerZL_, zrN = ncclPeerZR_;
-
-    // ---- Copy field pointers -> device (same pattern as MPI path) ----
-    memcpy(h_ptrArray_, h_fieldPtrs, nFields * sizeof(cudaSolverType*));
-    cudaMemcpyAsync(d_ptrArray_, h_ptrArray_, nFields * sizeof(cudaSolverType*),
-                    cudaMemcpyHostToDevice, stream);
 
     int cc[6];
     cc[0] = (xlN != MPI_PROC_NULL && xlN != myrank) ? 1 : 0;
@@ -157,7 +172,7 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
     const int rz0 = zRing2 ? 5 : 4, rz1 = zRing2 ? 4 : 5;
 
     const int offset = isCenterFlag ? 0 : 1;
-    cudaSolverType* const* d_ptrs = (cudaSolverType* const*) d_ptrArray_;
+    cudaSolverType* const* d_ptrs = d_fieldPtrs;
 
     const int nyzF = (ny - 2) * (nz - 2);   // YZ face element count per field
     const int nxzF = (nx - 2) * (nz - 2);   // XZ face

@@ -340,6 +340,31 @@ void EMfields3D::gpuNcclInit()
   MPI_Comm_rank(fieldcomm, &rank);
   MPI_Comm_size(fieldcomm, &size);
 
+  // NCCL requires exactly ONE rank per GPU: two ranks of the same
+  // communicator bound to the same device make ncclCommInitRank fail or
+  // hang with no useful diagnostic. The MPI halo path tolerates
+  // oversubscription (iPIC3Dlib.cu maps procPerDevice ranks per GPU when
+  // ranks > GPUs); this path does not, so fail early and clearly.
+  {
+    MPI_Comm nodeComm;
+    MPI_Comm_split_type(fieldcomm, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &nodeComm);
+    int nodeSize, myDev;
+    MPI_Comm_size(nodeComm, &nodeSize);
+    cudaErrChk(cudaGetDevice(&myDev));
+    std::vector<int> devs(nodeSize);
+    MPI_Allgather(&myDev, 1, MPI_INT, devs.data(), 1, MPI_INT, nodeComm);
+    MPI_Comm_free(&nodeComm);
+    if (std::count(devs.begin(), devs.end(), myDev) > 1)
+      eprintf("USE_NCCL requires one MPI rank per GPU, but multiple ranks on "
+              "this node share CUDA device %d. Run with at most one rank per "
+              "GPU, or rebuild with -DUSE_NCCL=OFF to use the MPI halo path.",
+              myDev);
+  }
+
+  // Register graph-captured NCCL buffers on first capture (NCCL >= 2.11).
+  // Must be set BEFORE ncclCommInitRank: NCCL reads its env at comm init.
+  setenv("NCCL_GRAPH_REGISTER", "1", 0);
+
   // Bootstrap: rank 0 creates the unique ID, broadcasts over the SAME
   // communicator your halo exchange already uses, so NCCL "rank" == MPI
   // rank in fieldcomm and your existing vct->getX/Y/Zleft/right_neighbor()
@@ -363,9 +388,6 @@ void EMfields3D::gpuNcclInit()
   cudaErrChk(cudaStreamCreateWithFlags(&interiorStream_, cudaStreamNonBlocking));
   cudaErrChk(cudaEventCreateWithFlags(&ncclForkEvent_, cudaEventDisableTiming));
   cudaErrChk(cudaEventCreateWithFlags(&ncclJoinEvent_,  cudaEventDisableTiming));
-
-  // first time they're seen inside a captured graph (requires NCCL >= 2.11).
-  setenv("NCCL_GRAPH_REGISTER", "1", 0);
 
   ncclInitialized_ = true;
 }
@@ -449,6 +471,13 @@ void EMfields3D::gpuSolverFree()
 #ifdef USE_NCCL
   for (auto& g : hatNcclExec_) if (g) cudaGraphExecDestroy(g);
   hatNcclExec_.clear();
+  if (maxwellImageNcclExec_) { cudaGraphExecDestroy(maxwellImageNcclExec_); maxwellImageNcclExec_ = nullptr; }
+
+  // Per-graph device pointer arrays: safe to free only after every graph
+  // exec that reads them (above) is destroyed.
+  if (d_maxwellNcclPtrs_) { cudaFree(d_maxwellNcclPtrs_); d_maxwellNcclPtrs_ = nullptr; }
+  if (d_bNcclPtrs_)       { cudaFree(d_bNcclPtrs_);       d_bNcclPtrs_ = nullptr; }
+  if (d_hatNcclPtrs_)     { cudaFree(d_hatNcclPtrs_);     d_hatNcclPtrs_ = nullptr; }
 
   // Must run LAST: destroys fieldNcclComm_ and the shared fork/join
   // events/streams that the graph execs above were captured against.
@@ -1322,6 +1351,18 @@ void EMfields3D::gpuBuildMaxwellImageNcclGraph(cudaSolverType *d_im)
   bool hasLeftZ  = (vct->getZleft_neighbor()  == MPI_PROC_NULL && bcEMfaceZleft  == 0);
   bool hasRightZ = (vct->getZright_neighbor() == MPI_PROC_NULL && bcEMfaceZright == 0);
 
+  // Immutable device pointer array for the captured halo exchange
+  // (must exist before capture; lives as long as the graph).
+  if (d_maxwellNcclPtrs_ == nullptr)
+  {
+    cudaSolverType *h10[10] = {
+        d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
+        d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
+        d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
+        d_divD};
+    d_maxwellNcclPtrs_ = gpuMakeNcclPtrArray(h10, 10);
+  }
+
   // NCCL P2P capture requires thread-local capture mode.
   cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal);
 
@@ -1343,14 +1384,8 @@ void EMfields3D::gpuBuildMaxwellImageNcclGraph(cudaSolverType *d_im)
   cudaEventRecord(ncclForkEvent_, solverStream_);
   cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0);
 
-  cudaSolverType *ptrs10[10] = {
-      d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr(),
-      d_divC.devPtr(), d_poissonTemp.devPtr(), d_poissonIm.devPtr(),
-      d_divBwork.devPtr(), d_divE_work.devPtr(), d_tempC.devPtr(),
-      d_divD};
-
   // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
-  gpuBatchedHaloExchangeNCCL(ptrs10, 10, nxc, nyc, nzc,
+  gpuBatchedHaloExchangeNCCL(d_maxwellNcclPtrs_, 10, nxc, nyc, nzc,
                              /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false,
                              solverStream_);
 
@@ -3255,6 +3290,14 @@ void EMfields3D::gpuBuildBNcclGraph()
 
   size_t centSize = (size_t)nxc * nyc * nzc;
 
+  // Immutable device pointer array for the captured halo exchange
+  // (must exist before capture; lives as long as the graph).
+  if (d_bNcclPtrs_ == nullptr)
+  {
+    cudaSolverType *h3[3] = {d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr()};
+    d_bNcclPtrs_ = gpuMakeNcclPtrArray(h3, 3);
+  }
+
   cudaErrChk(cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal));
 
   // ---- field update: curl(Eth) -> tempXC/YC/ZC, then B -= c*dt*curl(Eth) ----
@@ -3274,8 +3317,7 @@ void EMfields3D::gpuBuildBNcclGraph()
   cudaErrChk(cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0));
 
   // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
-  cudaSolverType *bptrs[3] = {d_Bxc.devPtr(), d_Byc.devPtr(), d_Bzc.devPtr()};
-  gpuBatchedHaloExchangeNCCL(bptrs, 3, nxc, nyc, nzc,
+  gpuBatchedHaloExchangeNCCL(d_bNcclPtrs_, 3, nxc, nyc, nzc,
                              /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false, solverStream_);
 
   // ---- Branch B (interiorStream_): interior interpC2N, overlaps the NCCL
@@ -3541,6 +3583,14 @@ void EMfields3D::gpuBuildHatNcclGraph(int is)
   size_t nodeSize = (size_t)nxn * nyn * nzn;
   size_t centSize = (size_t)nxc * nyc * nzc;
 
+  // Immutable device pointer array for the captured halo exchange (same
+  // tempXC/YC/ZC arrays for every species, so one array serves all graphs).
+  if (d_hatNcclPtrs_ == nullptr)
+  {
+    cudaSolverType *h3[3] = {d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr()};
+    d_hatNcclPtrs_ = gpuMakeNcclPtrArray(h3, 3);
+  }
+
   cudaErrChk(cudaStreamBeginCapture(solverStream_, cudaStreamCaptureModeThreadLocal));
 
   // ---- pre: divSymmTensorN2C + scale3 ----
@@ -3559,8 +3609,7 @@ void EMfields3D::gpuBuildHatNcclGraph(int is)
   cudaErrChk(cudaStreamWaitEvent(interiorStream_, ncclForkEvent_, 0));
 
   // ---- Branch A (solverStream_): NCCL halo exchange, captured ----
-  cudaSolverType *hatPtrs[3] = {d_tempXC.devPtr(), d_tempYC.devPtr(), d_tempZC.devPtr()};
-  gpuBatchedHaloExchangeNCCL(hatPtrs, 3, nxc, nyc, nzc,
+  gpuBatchedHaloExchangeNCCL(d_hatNcclPtrs_, 3, nxc, nyc, nzc,
                              /*isCenterFlag=*/true, /*isFaceOnlyFlag=*/false, solverStream_);
 
   // ---- Branch B (interiorStream_): interior interpC2N, overlaps the NCCL

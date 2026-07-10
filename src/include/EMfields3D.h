@@ -730,12 +730,22 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
                                 bool isCenterFlag, bool isFaceOnlyFlag,
                                 bool needInterp, bool isParticle,
                                 cudaStream_t stream);
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+    /** NCCL twin of gpuBatchedHaloExchange, graph-capturable.
+     *  @param d_fieldPtrs DEVICE-resident array of nFields device pointers.
+     *    Must stay allocated and unchanged for as long as any graph captured
+     *    around this call exists: the pack/unpack kernels read it at every
+     *    replay. Do NOT pass the shared d_ptrArray_ staging buffer — that one
+     *    is rewritten by every eager MPI batched exchange between replays.
+     *    Use gpuMakeNcclPtrArray() to build one. */
     void gpuBatchedHaloExchangeNCCL(
-      cudaSolverType** h_fieldPtrs, int nFields,
+      cudaSolverType* const* d_fieldPtrs, int nFields,
       int nx, int ny, int nz,
       bool isCenterFlag, bool isFaceOnlyFlag,
       cudaStream_t stream);
+    /** Allocate + fill a persistent device array of field pointers for use
+     *  with gpuBatchedHaloExchangeNCCL (synchronous; call BEFORE capture). */
+    cudaSolverType** gpuMakeNcclPtrArray(cudaSolverType* const* h_fieldPtrs, int nFields);
 #endif
 #ifdef HALO_OVERLAP
     /** Phase 1 of split halo exchange: pack boundary faces, post
@@ -1205,6 +1215,15 @@ void gpuLapN2N_3_finish(GPUFieldArray3 &fieldA,
 
   // Single fused graph for gpuMaxwellImage_nccl
   cudaGraphExec_t maxwellImageNcclExec_ = nullptr;
+
+  // Per-graph immutable device-resident field-pointer arrays for the NCCL
+  // halo exchanges captured inside the graphs above. Each graph needs its
+  // own: the shared h_ptrArray_/d_ptrArray_ staging pair is rewritten by
+  // every eager MPI batched exchange, so a captured copy from it would load
+  // the wrong pointers on replay.
+  cudaSolverType** d_maxwellNcclPtrs_ = nullptr; // 10 ptrs (Maxwell image)
+  cudaSolverType** d_bNcclPtrs_       = nullptr; // 3 ptrs (Bxc/Byc/Bzc)
+  cudaSolverType** d_hatNcclPtrs_     = nullptr; // 3 ptrs (tempXC/YC/ZC, shared by all species)
 
   // Secondary stream + events for the fork/join overlap pattern,
   // captured as part of the same graph.
