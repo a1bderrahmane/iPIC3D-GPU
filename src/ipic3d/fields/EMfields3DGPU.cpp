@@ -55,13 +55,30 @@
 #endif
 namespace
 {
-  struct MaxwellImageTimer
+  // Variant suffix appended to every timer label. A given binary only ever
+  // runs ONE implementation of each timed function (traditional, cuda_graph
+  // or nccl), selected by the compiler flags, so the label printed in the
+  // summary records which one this run measured.
+#if defined(CUDA_GRAPH) && defined(USE_NCCL)
+#define GPU_TIMER_SUFFIX "_nccl"
+#elif defined(CUDA_GRAPH)
+#define GPU_TIMER_SUFFIX "_cuda_graph"
+#else
+#define GPU_TIMER_SUFFIX ""
+#endif
+
+  struct GpuStageTimer
   {
+    const char *label;   // printed in the stderr summary (flag-dependent)
+    const char *csvStem; // per-rank CSV file stem
     std::vector<double> ms;
     cudaEvent_t startEvt = nullptr;
     cudaEvent_t stopEvt = nullptr;
     int rank = 0;
     bool inited = false;
+
+    GpuStageTimer(const char *label_, const char *csvStem_)
+        : label(label_), csvStem(csvStem_) {}
 
     void init()
     {
@@ -93,7 +110,7 @@ namespace
       ms.push_back((double)elapsed_ms);
     }
 
-    ~MaxwellImageTimer() { report(); } // runs at program exit
+    ~GpuStageTimer() { report(); } // runs at program exit
 
     void report()
     {
@@ -116,23 +133,15 @@ namespace
 
       const double median =
           (n % 2) ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
-#ifdef CUDA_GRAPH
       fprintf(stderr,
-              "[rank %d] gpuMaxwellImage_cuda_graph over %zu calls (ms):\n"
+              "[rank %d] %s over %zu calls (ms):\n"
               "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
               "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
-              rank, n, sum, mean, median, v.front(), v.back(), sd);
-#else
-      fprintf(stderr,
-              "[rank %d] gpuMaxwellImage over %zu calls (ms):\n"
-              "sum = %.6f\n  mean/avg = %.6f\n  median   = %.6f\n"
-              "  min      = %.6f\n  max      = %.6f\n  stdev    = %.6f\n",
-              rank, n, sum, mean, median, v.front(), v.back(), sd);
-#endif
+              rank, label, n, sum, mean, median, v.front(), v.back(), sd);
       // Raw per-call samples, one rank-local file, for later analysis.
       char fname[256];
       std::snprintf(fname, sizeof(fname),
-                    "maxwell_image_timing_rank%d.csv", rank);
+                    "%s_rank%d.csv", csvStem, rank);
       if (FILE *f = std::fopen(fname, "w"))
       {
         std::fprintf(f, "call,ms\n");
@@ -142,7 +151,15 @@ namespace
       }
     }
   };
-  static MaxwellImageTimer g_maxwellImageTimer;
+  // One timer per function family; each of the three implementations of a
+  // family brackets its whole body with begin()/end(), and the flag-derived
+  // suffix in the label says which implementation this binary ran.
+  static GpuStageTimer g_maxwellImageTimer("gpuMaxwellImage" GPU_TIMER_SUFFIX,
+                                           "maxwell_image_timing");
+  static GpuStageTimer g_calculateBTimer("gpuCalculateB" GPU_TIMER_SUFFIX,
+                                         "calculate_b_timing");
+  static GpuStageTimer g_hatFunctionsTimer("gpuCalculateHatFunctions" GPU_TIMER_SUFFIX,
+                                           "hat_functions_timing");
 } // namespace
 
 #ifdef HALO_OVERLAP
@@ -1458,7 +1475,7 @@ void EMfields3D::gpuBuildMaxwellImageNcclGraph(cudaSolverType *d_im)
 void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cudaSolverType *d_vector)
 {
   #ifdef CUDA_GRAPH
- // g_maxwellImageTimer.begin(solverStream_);
+  g_maxwellImageTimer.begin(solverStream_);
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
@@ -1616,7 +1633,6 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
     gpuPhys2Solver3(d_im,
                     d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                     nxn, nyn, nzn, solverStream_);
-    //  g_maxwellImageTimer.end(solverStream_);
     cudaStreamEndCapture(solverStream_, &g5);
     cudaGraphInstantiate(&s5Exec_, g5, NULL, NULL, 0);
     cudaGraphDestroy(g5);
@@ -1624,7 +1640,6 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
   nvtxRangePush("g_bc_post");
   cudaGraphLaunch(s5Exec_, solverStream_);
   nvtxRangePop();
-  // g_maxwellImageTimer.end(solverStream_);
 
 #else // ---------- blocking fallback  ----------
   nvtxRangePush("halo_A_blocking");
@@ -1725,13 +1740,12 @@ void EMfields3D::gpuMaxwellImage_cuda_graph_refactored(cudaSolverType *d_im, cud
   /* gpuPhys2Solver3(d_im,
                  d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                nxn, nyn, nzn, solverStream_);*/
- // g_maxwellImageTimer.end(solverStream_);
+  g_maxwellImageTimer.end(solverStream_);
   #endif
 }
 void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
 {
-
- // g_maxwellImageTimer.begin(solverStream_);
+  g_maxwellImageTimer.begin(solverStream_);
   #ifdef CUDA_GRAPH
   nvtxRangePush("gpuMaxwellImage");
   #endif
@@ -1836,8 +1850,7 @@ void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
   #ifdef CUDA_GRAPH
   nvtxRangePop();
   #endif
-
- // g_maxwellImageTimer.end(solverStream_);
+  g_maxwellImageTimer.end(solverStream_);
 }
 
 // =========================================================================
@@ -3027,6 +3040,8 @@ void EMfields3D::gpuCalculateB(int cycle)
   if (vct->getCartesian_rank() == 0)
     cout << "*** B CALCULATION [GPU] ***" << endl;
 
+  g_calculateBTimer.begin(solverStream_);
+
   size_t centSize = (size_t)nxc * nyc * nzc;
 
   // curl(Eth) → tempXC/YC/ZC
@@ -3113,6 +3128,8 @@ void EMfields3D::gpuCalculateB(int cycle)
   // Divergence cleaning: lap(PSI) = div(B), B = B - grad(PSI)
   if (divBCorrection && cycle % divBCorrectionCycle == 0)
     gpuApplyDivBCleaning();
+
+  g_calculateBTimer.end(solverStream_);
 }
 
 void EMfields3D::gpuCalculateB_cuda_graph(int cycle)
@@ -3127,6 +3144,8 @@ void EMfields3D::gpuCalculateB_cuda_graph(int cycle)
 
   if (vct->getCartesian_rank() == 0)
     cout << "*** B CALCULATION [GPU] ***" << endl;
+
+  g_calculateBTimer.begin(solverStream_);
 
   size_t centSize = (size_t)nxc * nyc * nzc;
 
@@ -3267,6 +3286,8 @@ void EMfields3D::gpuCalculateB_cuda_graph(int cycle)
   // Divergence cleaning: lap(PSI) = div(B), B = B - grad(PSI)
   if (divBCorrection && cycle % divBCorrectionCycle == 0)
     gpuApplyDivBCleaning();
+
+  g_calculateBTimer.end(solverStream_);
 #endif
 }
 
@@ -3367,6 +3388,8 @@ void EMfields3D::gpuCalculateB_nccl(int cycle)
   if (bNcclExec_ == nullptr)
     gpuBuildBNcclGraph();
 
+  g_calculateBTimer.begin(solverStream_);
+
   nvtxRangePush("gB_nccl");
   cudaErrChk(cudaGraphLaunch(bNcclExec_, solverStream_));
   nvtxRangePop();
@@ -3386,6 +3409,8 @@ void EMfields3D::gpuCalculateB_nccl(int cycle)
   // Divergence cleaning: lap(PSI) = div(B), B = B - grad(PSI)
   if (divBCorrection && cycle % divBCorrectionCycle == 0)
     gpuApplyDivBCleaning();
+
+  g_calculateBTimer.end(solverStream_);
 }
 #endif // CUDA_GRAPH && USE_NCCL
 
@@ -3395,7 +3420,7 @@ void EMfields3D::gpuCalculateB_nccl(int cycle)
 void EMfields3D::gpuCalculateHatFunctions_cuda_graph()
 {
   #ifdef CUDA_GRAPH
- // g_maxwellImageTimer.begin(solverStream_);
+  g_hatFunctionsTimer.begin(solverStream_);
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
@@ -3558,7 +3583,7 @@ void EMfields3D::gpuCalculateHatFunctions_cuda_graph()
   nvtxRangePop();
   // Communicate rhoh
   gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
- // g_maxwellImageTimer.end(solverStream_);
+  g_hatFunctionsTimer.end(solverStream_);
   #endif
 }
 
@@ -3644,6 +3669,7 @@ void EMfields3D::gpuBuildHatNcclGraph(int is)
 
 void EMfields3D::gpuCalculateHatFunctions_nccl()
 {
+  g_hatFunctionsTimer.begin(solverStream_);
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
@@ -3697,15 +3723,13 @@ void EMfields3D::gpuCalculateHatFunctions_nccl()
 
   // Communicate rhoh
   gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
+  g_hatFunctionsTimer.end(solverStream_);
 }
 #endif // CUDA_GRAPH && USE_NCCL
 
 void EMfields3D::gpuCalculateHatFunctions()
 {
- // #ifdef CUDA_GRAPH
- // nvtxRangePush("hat_begin");
- // #endif
- // g_maxwellImageTimer.begin(solverStream_);
+  g_hatFunctionsTimer.begin(solverStream_);
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
@@ -3787,10 +3811,7 @@ void EMfields3D::gpuCalculateHatFunctions()
 
   // Communicate rhoh
   gpuCommunicateCenterBC_P(nxc, nyc, nzc, d_rhoh, 2, 2, 2, 2, 2, 2);
- // g_maxwellImageTimer.end(solverStream_);
- // #ifdef CUDA_GRAPH
- // nvtxRangePop();
-  //#endif
+  g_hatFunctionsTimer.end(solverStream_);
 }
 
 // =========================================================================
