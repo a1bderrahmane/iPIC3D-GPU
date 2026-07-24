@@ -137,28 +137,47 @@ if (USE_ADIOS2)
   find_package(ADIOS2 REQUIRED)
 endif()
 
-# Find NCCL (needed for the CUDA-graph-capturable NCCL halo exchange path)
-if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL AND NOT HIP_ON)
-  find_path(NCCL_INCLUDE_DIR
-    NAMES nccl.h
-    HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
-    PATH_SUFFIXES include
-    )
-  find_library(NCCL_LIBRARY
-    NAMES nccl
-    HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
-    PATH_SUFFIXES lib lib64
-    )
-  if(NOT NCCL_INCLUDE_DIR OR NOT NCCL_LIBRARY)
-    message(FATAL_ERROR "NCCL is required (GPU_SOLVER, CUDA_GRAPH and USE_NCCL are all ON) but was not found. "
-      "Set NCCL_ROOT to the NCCL install prefix (e.g. -DNCCL_ROOT=/path/to/nccl or the NCCL_ROOT env var).")
+# Find NCCL/RCCL (needed for the CUDA-graph-capturable NCCL halo exchange path)
+if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL)
+  if(HIP_ON)
+    # RCCL ships inside the ROCm install (e.g. $ROCM_PATH/include/rccl/rccl.h,
+    # $ROCM_PATH/lib/librccl.so), so hint at ROCM_PATH in addition to NCCL_ROOT.
+    find_path(NCCL_INCLUDE_DIR
+      NAMES rccl.h
+      HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT} ${ROCM_PATH} $ENV{ROCM_PATH}
+      PATH_SUFFIXES include include/rccl
+      )
+    find_library(NCCL_LIBRARY
+      NAMES rccl
+      HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT} ${ROCM_PATH} $ENV{ROCM_PATH}
+      PATH_SUFFIXES lib lib64
+      )
+    if(NOT NCCL_INCLUDE_DIR OR NOT NCCL_LIBRARY)
+      message(FATAL_ERROR "RCCL is required (GPU_SOLVER, CUDA_GRAPH, USE_NCCL and HIP_ON are all ON) but was not found. "
+        "Set NCCL_ROOT or ROCM_PATH to the RCCL/ROCm install prefix (e.g. -DNCCL_ROOT=/opt/rocm/rccl).")
+    endif()
+  else()
+    find_path(NCCL_INCLUDE_DIR
+      NAMES nccl.h
+      HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
+      PATH_SUFFIXES include
+      )
+    find_library(NCCL_LIBRARY
+      NAMES nccl
+      HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
+      PATH_SUFFIXES lib lib64
+      )
+    if(NOT NCCL_INCLUDE_DIR OR NOT NCCL_LIBRARY)
+      message(FATAL_ERROR "NCCL is required (GPU_SOLVER, CUDA_GRAPH and USE_NCCL are all ON) but was not found. "
+        "Set NCCL_ROOT to the NCCL install prefix (e.g. -DNCCL_ROOT=/path/to/nccl or the NCCL_ROOT env var).")
+    endif()
   endif()
   add_library(NCCL::NCCL UNKNOWN IMPORTED)
   set_target_properties(NCCL::NCCL PROPERTIES
     IMPORTED_LOCATION "${NCCL_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${NCCL_INCLUDE_DIR}"
     )
-  message(STATUS "Found NCCL: ${NCCL_LIBRARY} (include: ${NCCL_INCLUDE_DIR})")
+  message(STATUS "Found NCCL/RCCL: ${NCCL_LIBRARY} (include: ${NCCL_INCLUDE_DIR})")
 endif()
 
 #
@@ -203,6 +222,21 @@ if(HIP_ON)
   set(DEVICE_COMPILER hipcc)
   target_link_libraries(iPIC3Dlib PRIVATE hip::device)
   target_link_libraries(iPIC3Dlib PRIVATE hip::host)
+
+  if(CUDA_GRAPH)
+    # roctx provides the ROCTX_API markers used as the NVTX-equivalent
+    # profiling ranges (roctxRangePushA/roctxRangePop, see hipifly.hpp).
+    find_library(ROCTX_LIBRARY
+      NAMES roctx64
+      HINTS ${ROCM_PATH} $ENV{ROCM_PATH}
+      PATH_SUFFIXES lib lib64
+      )
+    if(NOT ROCTX_LIBRARY)
+      message(FATAL_ERROR "roctx64 is required (HIP_ON and CUDA_GRAPH are both ON) but was not found. "
+        "Set ROCM_PATH to the ROCm install prefix.")
+    endif()
+    target_link_libraries(iPIC3Dlib PRIVATE ${ROCTX_LIBRARY})
+  endif()
 
   # On Cray systems the MPI wrapper (CC) handles MPI includes implicitly,
   # but HIP files are compiled with amdclang++ which needs explicit paths.
@@ -271,7 +305,7 @@ if (USE_ADIOS2)
     list(APPEND linkLibraries adios2::cxx_mpi)
 endif()
 
-if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL AND NOT HIP_ON)
+if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL)
     list(APPEND linkLibraries NCCL::NCCL)
 endif()
 
@@ -432,8 +466,8 @@ message(STATUS "  GPU solver                  : ${GPU_SOLVER}  (entire field sol
 message(STATUS "  GPU halo overlap            : ${HALO_OVERLAP}  (overlap halo communication with computation in GPU field solver, requires GPU_SOLVER=ON)")
 message(STATUS "  CUDA GRAPH                  : ${CUDA_GRAPH}  (cuda graph optimization, requires GPU_SOLVER=ON)")
 message(STATUS "  USE_NCCL                     : ${USE_NCCL}  (NCCL halo exchange instead of MPI, requires CUDA_GRAPH=ON)")
-if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL AND NOT HIP_ON)
-message(STATUS "  NCCL                         : ${NCCL_LIBRARY}")
+if(GPU_SOLVER AND CUDA_GRAPH AND USE_NCCL)
+message(STATUS "  NCCL/RCCL                    : ${NCCL_LIBRARY}")
 endif()
 
 message(STATUS "  HDF5 output                 : ${USE_HDF5}")

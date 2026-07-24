@@ -1,0 +1,192 @@
+[173.847]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.848]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.848]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.849]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.849]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.850]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.850]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[173.857]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
+[0;31mE20260723 16:27:13.184052 22498982749056 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank2_results.pftrace
+[0;31mE20260723 16:27:13.259735 22882979861376 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank0_results.pftrace
+[0;31mE20260723 16:27:13.325491 23189726589824 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank5_results.pftrace
+[0;31mE20260723 16:27:13.395574 23111043097472 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank1_results.pftrace
+[0;31mE20260723 16:27:13.472338 22807065883520 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank7_results.pftrace
+[0;31mE20260723 16:27:13.492736 22886123131776 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank4_results.pftrace
+[0;31mE20260723 16:27:13.556111 23138054878080 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank3_results.pftrace
+[0;31mE20260723 16:27:13.571658 23105982763904 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank6_results.pftrace
+[m[188.043]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 2] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.575818
+  mean/avg = 15.910989
+  median   = 8.770030
+  min      = 7.464732
+  max      = 122.749695
+  stdev    = 28.523459
+[rank 2] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 25.761599
+  mean/avg = 1.717440
+  median   = 1.562579
+  min      = 1.371057
+  max      = 3.235240
+  stdev    = 0.465288
+[rank 2] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 342.381539
+  mean/avg = 1.172540
+  median   = 1.124574
+  min      = 0.957132
+  max      = 6.515122
+  stdev    = 0.370118
+[m[188.114]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 0] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.332678
+  mean/avg = 15.895792
+  median   = 8.722856
+  min      = 7.468208
+  max      = 122.699677
+  stdev    = 28.513531
+[rank 0] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 28.247221
+  mean/avg = 1.883148
+  median   = 1.700651
+  min      = 1.543530
+  max      = 3.266101
+  stdev    = 0.443285
+[rank 0] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 349.512802
+  mean/avg = 1.196962
+  median   = 1.200648
+  min      = 0.953606
+  max      = 6.440362
+  stdev    = 0.372434
+[m[188.168]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 5] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.500557
+  mean/avg = 15.906285
+  median   = 8.729456
+  min      = 7.462962
+  max      = 122.719589
+  stdev    = 28.516277
+[rank 5] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 26.976460
+  mean/avg = 1.798431
+  median   = 1.593938
+  min      = 1.440176
+  max      = 3.270756
+  stdev    = 0.457681
+[rank 5] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 338.988676
+  mean/avg = 1.160920
+  median   = 1.200973
+  min      = 0.946731
+  max      = 6.491432
+  stdev    = 0.361407
+[m[188.246]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 1] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.558282
+  mean/avg = 15.909893
+  median   = 8.747336
+  min      = 7.467567
+  max      = 122.706398
+  stdev    = 28.511876
+[rank 1] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 25.930085
+  mean/avg = 1.728672
+  median   = 1.615530
+  min      = 1.393769
+  max      = 3.268821
+  stdev    = 0.466137
+[rank 1] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 337.569511
+  mean/avg = 1.156060
+  median   = 1.203847
+  min      = 0.945286
+  max      = 6.471082
+  stdev    = 0.360200
+[m[188.310]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[m[188.319]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 7] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.510879
+  mean/avg = 15.906930
+  median   = 8.741313
+  min      = 7.468827
+  max      = 122.674866
+  stdev    = 28.504340
+[rank 7] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 25.826015
+  mean/avg = 1.721734
+  median   = 1.554086
+  min      = 1.381445
+  max      = 3.236172
+  stdev    = 0.462618
+[rank 7] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 332.403811
+  mean/avg = 1.138369
+  median   = 1.100003
+  min      = 0.946563
+  max      = 6.514584
+  stdev    = 0.358451
+[rank 4] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.399762
+  mean/avg = 15.899985
+  median   = 8.714895
+  min      = 7.472242
+  max      = 122.683914
+  stdev    = 28.508531
+[rank 4] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 27.420945
+  mean/avg = 1.828063
+  median   = 1.719538
+  min      = 1.502417
+  max      = 3.278756
+  stdev    = 0.439962
+[rank 4] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 344.792109
+  mean/avg = 1.180795
+  median   = 1.199293
+  min      = 0.950090
+  max      = 6.450471
+  stdev    = 0.368365
+[m[188.395]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[m[188.429]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
+[rank 3] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.646702
+  mean/avg = 15.915419
+  median   = 8.743875
+  min      = 7.466012
+  max      = 122.728409
+  stdev    = 28.516588
+[rank 3] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 26.812016
+  mean/avg = 1.787468
+  median   = 1.660021
+  min      = 1.502419
+  max      = 3.277641
+  stdev    = 0.442570
+[rank 3] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 330.683657
+  mean/avg = 1.132478
+  median   = 1.102413
+  min      = 0.943533
+  max      = 6.450480
+  stdev    = 0.354429
+[rank 6] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
+sum = 254.594730
+  mean/avg = 15.912171
+  median   = 8.760993
+  min      = 7.469307
+  max      = 122.718872
+  stdev    = 28.515166
+[rank 6] gpuCalculateB_cuda_graph over 15 calls (ms):
+sum = 26.146820
+  mean/avg = 1.743121
+  median   = 1.654086
+  min      = 1.428486
+  max      = 3.202252
+  stdev    = 0.436060
+[rank 6] gpuMaxwellImage_cuda_graph over 292 calls (ms):
+sum = 339.573595
+  mean/avg = 1.162923
+  median   = 1.123044
+  min      = 0.950083
+  max      = 6.519866
+  stdev    = 0.366124

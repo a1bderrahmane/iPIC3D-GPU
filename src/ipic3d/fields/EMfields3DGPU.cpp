@@ -51,7 +51,11 @@
 #include <MPIdata.h>
 #include <chrono>
 #ifdef CUDA_GRAPH
+#ifdef HIPIFLY
+#include <roctracer/roctx.h>
+#else
 #include <nvtx3/nvToolsExt.h>
+#endif
 #endif
 namespace
 {
@@ -334,10 +338,8 @@ void EMfields3D::gpuSolverAllocate()
   d_chebTmp = nullptr;
   chebAlloc = 0;
 
-  // ---- Dedicated non-blocking solver stream ----
   cudaErrChk(cudaStreamCreateWithFlags(&solverStream_, cudaStreamNonBlocking));
 
-  // ---- Persistent batched halo-exchange buffers ----
   gpuAllocateHaloBuffers();
   #if defined(CUDA_GRAPH) && defined(USE_NCCL)
   gpuNcclInit();
@@ -357,11 +359,7 @@ void EMfields3D::gpuNcclInit()
   MPI_Comm_rank(fieldcomm, &rank);
   MPI_Comm_size(fieldcomm, &size);
 
-  // NCCL requires exactly ONE rank per GPU: two ranks of the same
-  // communicator bound to the same device make ncclCommInitRank fail or
-  // hang with no useful diagnostic. The MPI halo path tolerates
-  // oversubscription (iPIC3Dlib.cu maps procPerDevice ranks per GPU when
-  // ranks > GPUs); this path does not, so fail early and clearly.
+  // NCCL requires exactly ONE rank per GPU
   {
     MPI_Comm nodeComm;
     MPI_Comm_split_type(fieldcomm, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &nodeComm);
@@ -378,14 +376,10 @@ void EMfields3D::gpuNcclInit()
               myDev);
   }
 
-  // Register graph-captured NCCL buffers on first capture (NCCL >= 2.11).
-  // Must be set BEFORE ncclCommInitRank: NCCL reads its env at comm init.
+
   setenv("NCCL_GRAPH_REGISTER", "1", 0);
 
-  // Bootstrap: rank 0 creates the unique ID, broadcasts over the SAME
-  // communicator your halo exchange already uses, so NCCL "rank" == MPI
-  // rank in fieldcomm and your existing vct->getX/Y/Zleft/right_neighbor()
-  // values can be used directly as NCCL peer ids.
+
   ncclUniqueId id;
   if (rank == 0) NCCLCHECK(ncclGetUniqueId(&id));
   MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, fieldcomm);
