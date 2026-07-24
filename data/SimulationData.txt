@@ -15,7 +15,7 @@ Number of cells (y)      = 64
 Number of cells (z)      = 64
 ---------------------------
 Time step                = 0.15
-Number of cycles         = 400
+Number of cycles         = 15
 ---------------------------
 rho init species   0 = 1
 rho inject species 0 = 0

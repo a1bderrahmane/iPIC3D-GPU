@@ -35,7 +35,7 @@
 #include "Timing.h"
 #include "outputPrepare.h"
 #include "IOManager.h"
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && !defined(HIPIFLY)
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
 #endif

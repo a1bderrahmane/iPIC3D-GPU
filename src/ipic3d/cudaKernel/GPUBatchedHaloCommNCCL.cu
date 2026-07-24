@@ -8,9 +8,8 @@
  * ncclGroupStart()/ncclRecv()/ncclSend()/ncclGroupEnd(), and every
  * cudaStreamSynchronize() removed (NCCL ops are stream-ordered, so CUDA's
  * own stream ordering guarantees pack-before-send and send-before-unpack
- * without a host sync). This is what makes the whole function safe to
- * record inside a single cudaStreamBeginCapture/EndCapture block.
- *
+ * without a host sync). 
+
  * Reuses the persistent send/recv buffers (d_haloBuf_send_[6],
  * d_haloBuf_recv_[6]) allocated by gpuAllocateHaloBuffers() in
  * EMfields3DGPU.cpp. It deliberately does NOT use the shared
@@ -20,9 +19,6 @@
  * per-graph immutable DEVICE pointer array (see gpuMakeNcclPtrArray),
  * prepared before capture.
  *
- * isParticle / needInterp are NOT supported here: this path is field-only
- * (Maxwell image, calculateB, calculateHatFunctions). Particle-moment halo
- * exchange keeps using the MPI path in GPUBatchedHaloComm.cu.
  *
  * Requires: -rdc=true (relocatable device code) at compile time, since the
  * pack/unpack kernels (k_batchPack2D, k_batchUnpack2D, k_batchPackCorners4,
@@ -151,19 +147,7 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
     cc[4] = (zlN != MPI_PROC_NULL && zlN != myrank) ? 1 : 0;
     cc[5] = (zrN != MPI_PROC_NULL && zrN != myrank) ? 1 : 0;
 
-    // ---- Ring-of-2 correction --------------------------------------------
-    // NCCL point-to-point has no message tags: ncclSend/ncclRecv between a
-    // given rank pair are matched purely by enqueue order (1st send <-> 1st
-    // recv, 2nd <-> 2nd). MPI's version of this exchange disambiguates the
-    // "low side" and "high side" messages to the same peer with tag_XL vs
-    // tag_XR (etc). When a dimension has exactly 2 ranks in a periodic ring,
-    // a rank's low-side and high-side neighbour are the SAME peer, and both
-    // ranks post their low-side (index 0/2/4) NCCL call before their
-    // high-side (index 1/3/5) call — so the low-side recv buffer always ends
-    // up holding the peer's low-side message, which is actually what this
-    // rank's HIGH-side ghost needs (and vice versa). Swap which recv buffer
-    // feeds which ghost side to compensate; sends/recvs themselves are
-    // unaffected. No-op (identity) when the two neighbours differ.
+   
     const bool xRing2 = cc[0] && cc[1] && (xlN == xrN);
     const bool yRing2 = cc[2] && cc[3] && (ylN == yrN);
     const bool zRing2 = cc[4] && cc[5] && (zlN == zrN);
@@ -191,12 +175,7 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
     if (cc[4]) { int iz = 1 + offset;    launchPack2D_(d_haloBuf_send_[4], d_ptrs, nFields, 1*ny*nz + 1*nz + iz, ny*nz, nz, nx-2, ny-2, stream); }
     if (cc[5]) { int iz = nz - 2 - offset; launchPack2D_(d_haloBuf_send_[5], d_ptrs, nFields, 1*ny*nz + 1*nz + iz, ny*nz, nz, nx-2, ny-2, stream); }
 
-    // NOTE: no cudaStreamSynchronize here — NCCL ops below are enqueued on
-    // the same `stream`, so CUDA stream ordering guarantees the packs above
-    // complete before any send/recv reads the buffers. This is the key
-    // structural difference vs. the MPI path and the reason this whole
-    // function is graph-capturable.
-
+    
     NCCLCHECK(ncclGroupStart());
     if (cc[0]) { NCCLCHECK(ncclRecv(d_haloBuf_recv_[0], nyzF*nFields, nt, xlN, fieldNcclComm_, stream));
                  NCCLCHECK(ncclSend(d_haloBuf_send_[0], nyzF*nFields, nt, xlN, fieldNcclComm_, stream)); }

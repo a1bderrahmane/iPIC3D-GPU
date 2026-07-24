@@ -25,7 +25,7 @@
 #include "TimeTasks.h"
 #include <stdio.h>
 #include <chrono>
-#ifdef CUDA_GRAPH
+#if defined(CUDA_GRAPH) && !defined(HIPIFLY)
 #include <cuda_profiler_api.h>
 #endif
 

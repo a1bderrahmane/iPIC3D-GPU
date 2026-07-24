@@ -1,8 +1,11 @@
 #pragma once
 
 #if defined(CUDA_GRAPH) && defined(USE_NCCL)
-
+#ifdef HIPIFLY
+#include <rccl.h>
+#else
 #include <nccl.h>
+#endif
 #include "cudaTypeDef.cuh" // for cudaSolverType
 
 #define NCCLCHECK(cmd) do {                                  \
