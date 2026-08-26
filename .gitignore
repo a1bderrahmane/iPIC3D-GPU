@@ -18,3 +18,4 @@ core
 att_traces/
 env/rocprof_tools/
 *.vtk
+weak_scaling/
