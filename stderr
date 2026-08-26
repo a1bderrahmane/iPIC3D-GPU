@@ -1,192 +1,504 @@
-[173.847]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.848]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.848]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.849]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.849]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.850]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.850]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[173.857]       perfetto.cc:47314 Configured tracing session 1, #sources:1, duration:0 ms, #buffers:1, total buffer size:1024000 KB, total sessions:1, uid:0 session name: ""
-[0;31mE20260723 16:27:13.184052 22498982749056 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank2_results.pftrace
-[0;31mE20260723 16:27:13.259735 22882979861376 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank0_results.pftrace
-[0;31mE20260723 16:27:13.325491 23189726589824 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank5_results.pftrace
-[0;31mE20260723 16:27:13.395574 23111043097472 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank1_results.pftrace
-[0;31mE20260723 16:27:13.472338 22807065883520 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank7_results.pftrace
-[0;31mE20260723 16:27:13.492736 22886123131776 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank4_results.pftrace
-[0;31mE20260723 16:27:13.556111 23138054878080 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank3_results.pftrace
-[0;31mE20260723 16:27:13.571658 23105982763904 output_file.cpp:102] Opened result file: ./rocprof_traces/trace_rank6_results.pftrace
-[m[188.043]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 2] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.575818
-  mean/avg = 15.910989
-  median   = 8.770030
-  min      = 7.464732
-  max      = 122.749695
-  stdev    = 28.523459
-[rank 2] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 25.761599
-  mean/avg = 1.717440
-  median   = 1.562579
-  min      = 1.371057
-  max      = 3.235240
-  stdev    = 0.465288
-[rank 2] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 342.381539
-  mean/avg = 1.172540
-  median   = 1.124574
-  min      = 0.957132
-  max      = 6.515122
-  stdev    = 0.370118
-[m[188.114]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 0] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.332678
-  mean/avg = 15.895792
-  median   = 8.722856
-  min      = 7.468208
-  max      = 122.699677
-  stdev    = 28.513531
-[rank 0] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 28.247221
-  mean/avg = 1.883148
-  median   = 1.700651
-  min      = 1.543530
-  max      = 3.266101
-  stdev    = 0.443285
-[rank 0] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 349.512802
-  mean/avg = 1.196962
-  median   = 1.200648
-  min      = 0.953606
-  max      = 6.440362
-  stdev    = 0.372434
-[m[188.168]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 5] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.500557
-  mean/avg = 15.906285
-  median   = 8.729456
-  min      = 7.462962
-  max      = 122.719589
-  stdev    = 28.516277
-[rank 5] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 26.976460
-  mean/avg = 1.798431
-  median   = 1.593938
-  min      = 1.440176
-  max      = 3.270756
-  stdev    = 0.457681
-[rank 5] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 338.988676
-  mean/avg = 1.160920
-  median   = 1.200973
-  min      = 0.946731
-  max      = 6.491432
-  stdev    = 0.361407
-[m[188.246]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 1] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.558282
-  mean/avg = 15.909893
-  median   = 8.747336
-  min      = 7.467567
-  max      = 122.706398
-  stdev    = 28.511876
-[rank 1] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 25.930085
-  mean/avg = 1.728672
-  median   = 1.615530
-  min      = 1.393769
-  max      = 3.268821
-  stdev    = 0.466137
-[rank 1] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 337.569511
-  mean/avg = 1.156060
-  median   = 1.203847
-  min      = 0.945286
-  max      = 6.471082
-  stdev    = 0.360200
-[m[188.310]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[m[188.319]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 7] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.510879
-  mean/avg = 15.906930
-  median   = 8.741313
-  min      = 7.468827
-  max      = 122.674866
-  stdev    = 28.504340
-[rank 7] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 25.826015
-  mean/avg = 1.721734
-  median   = 1.554086
-  min      = 1.381445
-  max      = 3.236172
-  stdev    = 0.462618
-[rank 7] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 332.403811
-  mean/avg = 1.138369
-  median   = 1.100003
-  min      = 0.946563
-  max      = 6.514584
-  stdev    = 0.358451
-[rank 4] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.399762
-  mean/avg = 15.899985
-  median   = 8.714895
-  min      = 7.472242
-  max      = 122.683914
-  stdev    = 28.508531
-[rank 4] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 27.420945
-  mean/avg = 1.828063
-  median   = 1.719538
-  min      = 1.502417
-  max      = 3.278756
-  stdev    = 0.439962
-[rank 4] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 344.792109
-  mean/avg = 1.180795
-  median   = 1.199293
-  min      = 0.950090
-  max      = 6.450471
-  stdev    = 0.368365
-[m[188.395]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[m[188.429]       perfetto.cc:48889 Tracing session 1 ended, total sessions:0
-[rank 3] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.646702
-  mean/avg = 15.915419
-  median   = 8.743875
-  min      = 7.466012
-  max      = 122.728409
-  stdev    = 28.516588
-[rank 3] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 26.812016
-  mean/avg = 1.787468
-  median   = 1.660021
-  min      = 1.502419
-  max      = 3.277641
-  stdev    = 0.442570
-[rank 3] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 330.683657
-  mean/avg = 1.132478
-  median   = 1.102413
-  min      = 0.943533
-  max      = 6.450480
-  stdev    = 0.354429
-[rank 6] gpuCalculateHatFunctions_cuda_graph over 16 calls (ms):
-sum = 254.594730
-  mean/avg = 15.912171
-  median   = 8.760993
-  min      = 7.469307
-  max      = 122.718872
-  stdev    = 28.515166
-[rank 6] gpuCalculateB_cuda_graph over 15 calls (ms):
-sum = 26.146820
-  mean/avg = 1.743121
-  median   = 1.654086
-  min      = 1.428486
-  max      = 3.202252
-  stdev    = 0.436060
-[rank 6] gpuMaxwellImage_cuda_graph over 292 calls (ms):
-sum = 339.573595
-  mean/avg = 1.162923
-  median   = 1.123044
-  min      = 0.950083
-  max      = 6.519866
-  stdev    = 0.366124
+[rank 10] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3416.105136
+  mean/avg = 8.518965
+  median   = 7.779566
+  min      = 7.423082
+  max      = 253.006546
+  stdev    = 12.266941
+[rank 10] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7477.834022
+  mean/avg = 18.694585
+  median   = 16.735700
+  min      = 4.505465
+  max      = 442.913391
+  stdev    = 24.276930
+[rank 2] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3401.895770
+  mean/avg = 8.483531
+  median   = 7.745201
+  min      = 7.392073
+  max      = 252.110779
+  stdev    = 12.224375
+[rank 15] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3367.964986
+  mean/avg = 8.398915
+  median   = 7.737647
+  min      = 7.393324
+  max      = 226.369644
+  stdev    = 10.940056
+[rank 12] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3402.788558
+  mean/avg = 8.485757
+  median   = 7.779599
+  min      = 7.403593
+  max      = 249.657043
+  stdev    = 12.097113
+[rank 13] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3408.749259
+  mean/avg = 8.500622
+  median   = 7.790799
+  min      = 7.403594
+  max      = 248.152863
+  stdev    = 12.021095
+[rank 9] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3371.179474
+  mean/avg = 8.406931
+  median   = 7.739410
+  min      = 7.388207
+  max      = 226.329697
+  stdev    = 10.940559
+[rank 14] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3400.607249
+  mean/avg = 8.480317
+  median   = 7.743727
+  min      = 7.395243
+  max      = 251.220825
+  stdev    = 12.180172
+[rank 3] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3368.470506
+  mean/avg = 8.400176
+  median   = 7.736078
+  min      = 7.394792
+  max      = 226.830551
+  stdev    = 10.963091
+[rank 5] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3433.126841
+  mean/avg = 8.561414
+  median   = 7.826951
+  min      = 7.402464
+  max      = 250.918289
+  stdev    = 12.161352
+[rank 0] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3396.704729
+  mean/avg = 8.470585
+  median   = 7.769793
+  min      = 7.404188
+  max      = 249.028931
+  stdev    = 12.066467
+[rank 2] gpuCalculateB_nccl over 400 calls (ms):
+sum = 3223.258824
+  mean/avg = 8.058147
+  median   = 6.073181
+  min      = 2.351062
+  max      = 247.301575
+  stdev    = 15.436357
+[rank 12] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6766.702163
+  mean/avg = 16.916755
+  median   = 14.551907
+  min      = 2.924028
+  max      = 439.553589
+  stdev    = 24.465459
+[rank 3] gpuCalculateB_nccl over 400 calls (ms):
+sum = 2970.771628
+  mean/avg = 7.426929
+  median   = 5.163571
+  min      = 1.631055
+  max      = 217.662064
+  stdev    = 14.667903
+[rank 8] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3373.729238
+  mean/avg = 8.413290
+  median   = 7.745812
+  min      = 7.399087
+  max      = 225.702316
+  stdev    = 10.908941
+[rank 5] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7487.372133
+  mean/avg = 18.718430
+  median   = 16.549670
+  min      = 5.325804
+  max      = 451.890198
+  stdev    = 24.762348
+[rank 6] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3402.512359
+  mean/avg = 8.485068
+  median   = 7.772218
+  min      = 7.406615
+  max      = 249.217499
+  stdev    = 12.077600
+[rank 7] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3411.301213
+  mean/avg = 8.506986
+  median   = 7.789018
+  min      = 7.411255
+  max      = 248.102768
+  stdev    = 12.020654
+[rank 15] gpuCalculateB_nccl over 400 calls (ms):
+sum = 2620.236992
+  mean/avg = 6.550592
+  median   = 3.899783
+  min      = 2.239053
+  max      = 196.772263
+  stdev    = 10.395643
+[rank 10] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 80507.639722
+  mean/avg = 3.336828
+  median   = 3.301939
+  min      = 3.076498
+  max      = 26.962715
+  stdev    = 0.268544
+[rank 9] gpuCalculateB_nccl over 400 calls (ms):
+sum = 1993.301525
+  mean/avg = 4.983254
+  median   = 2.219294
+  min      = 1.678409
+  max      = 431.038208
+  stdev    = 23.422255
+[rank 0] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6436.175887
+  mean/avg = 16.090440
+  median   = 14.019819
+  min      = 1.589285
+  max      = 442.276031
+  stdev    = 24.259044
+[rank 14] gpuCalculateB_nccl over 400 calls (ms):
+sum = 1832.686257
+  mean/avg = 4.581716
+  median   = 2.404974
+  min      = 1.778730
+  max      = 196.107452
+  stdev    = 10.121328
+[rank 8] gpuCalculateB_nccl over 400 calls (ms):
+sum = 2932.822672
+  mean/avg = 7.332057
+  median   = 4.082906
+  min      = 1.889131
+  max      = 439.633453
+  stdev    = 23.815371
+[rank 1] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3410.163494
+  mean/avg = 8.504148
+  median   = 7.787073
+  min      = 7.409788
+  max      = 247.200912
+  stdev    = 11.976638
+[rank 11] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3409.091181
+  mean/avg = 8.501474
+  median   = 7.813007
+  min      = 7.430443
+  max      = 238.275269
+  stdev    = 11.529229
+[rank 6] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6028.040598
+  mean/avg = 15.070101
+  median   = 12.697614
+  min      = 1.916813
+  max      = 437.646179
+  stdev    = 24.268367
+[rank 2] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79941.401946
+  mean/avg = 3.313359
+  median   = 3.300515
+  min      = 3.109312
+  max      = 26.546345
+  stdev    = 0.252822
+[rank 7] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6427.500787
+  mean/avg = 16.068752
+  median   = 13.797861
+  min      = 3.097301
+  max      = 438.872406
+  stdev    = 24.049450
+[rank 3] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79811.245819
+  mean/avg = 3.307964
+  median   = 3.294913
+  min      = 3.096832
+  max      = 22.835913
+  stdev    = 0.202635
+[rank 5] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79300.616988
+  mean/avg = 3.286800
+  median   = 3.232347
+  min      = 3.017306
+  max      = 26.520390
+  stdev    = 0.274103
+[rank 12] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79156.327244
+  mean/avg = 3.280819
+  median   = 3.257474
+  min      = 3.100831
+  max      = 22.648392
+  stdev    = 0.205102
+[rank 1] gpuCalculateB_nccl over 400 calls (ms):
+sum = 5802.286320
+  mean/avg = 14.505716
+  median   = 11.495649
+  min      = 1.535044
+  max      = 441.486725
+  stdev    = 24.583083
+[rank 11] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7723.595640
+  mean/avg = 19.308989
+  median   = 17.420663
+  min      = 5.321469
+  max      = 442.221069
+  stdev    = 24.096178
+[rank 9] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 78974.263840
+  mean/avg = 3.273273
+  median   = 3.254581
+  min      = 3.078740
+  max      = 22.784632
+  stdev    = 0.203994
+[rank 15] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79546.300910
+  mean/avg = 3.296983
+  median   = 3.284500
+  min      = 3.061939
+  max      = 22.781420
+  stdev    = 0.201271
+[rank 4] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3414.515936
+  mean/avg = 8.515002
+  median   = 7.775592
+  min      = 7.412864
+  max      = 253.307419
+  stdev    = 12.282195
+[rank 0] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 78705.089651
+  mean/avg = 3.262117
+  median   = 3.234734
+  min      = 3.076813
+  max      = 22.595619
+  stdev    = 0.208220
+[rank 8] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79860.804662
+  mean/avg = 3.310018
+  median   = 3.291861
+  min      = 3.096980
+  max      = 22.838232
+  stdev    = 0.204320
+[rank 14] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79995.934175
+  mean/avg = 3.315619
+  median   = 3.301941
+  min      = 3.110899
+  max      = 26.522078
+  stdev    = 0.255454
+[rank 4] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7420.866054
+  mean/avg = 18.552165
+  median   = 16.487271
+  min      = 4.944041
+  max      = 442.549164
+  stdev    = 24.228921
+[rank 7] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79525.245721
+  mean/avg = 3.296110
+  median   = 3.280665
+  min      = 3.098744
+  max      = 22.705933
+  stdev    = 0.202168
+[rank 11] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79895.211917
+  mean/avg = 3.311444
+  median   = 3.284659
+  min      = 3.025937
+  max      = 22.986217
+  stdev    = 0.218838
+[rank 1] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 78382.955157
+  mean/avg = 3.248765
+  median   = 3.221614
+  min      = 3.052814
+  max      = 22.587940
+  stdev    = 0.208965
+[rank 4] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79356.385992
+  mean/avg = 3.289111
+  median   = 3.230908
+  min      = 3.022587
+  max      = 26.894793
+  stdev    = 0.274838
+[rank 20] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3404.868995
+  mean/avg = 8.490945
+  median   = 7.756741
+  min      = 7.394170
+  max      = 251.753815
+  stdev    = 12.206136
+[rank 22] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3411.857769
+  mean/avg = 8.508373
+  median   = 7.764385
+  min      = 7.393174
+  max      = 252.977341
+  stdev    = 12.266004
+[rank 16] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3416.515800
+  mean/avg = 8.519990
+  median   = 7.776389
+  min      = 7.411578
+  max      = 252.961655
+  stdev    = 12.264601
+[rank 17] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3424.256843
+  mean/avg = 8.539294
+  median   = 7.807422
+  min      = 7.404059
+  max      = 250.029160
+  stdev    = 12.116984
+[rank 18] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3402.660377
+  mean/avg = 8.485437
+  median   = 7.769220
+  min      = 7.399132
+  max      = 248.573166
+  stdev    = 12.045048
+[rank 19] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3399.079689
+  mean/avg = 8.476508
+  median   = 7.810181
+  min      = 7.427612
+  max      = 234.367706
+  stdev    = 11.331086
+[rank 23] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3415.652374
+  mean/avg = 8.517836
+  median   = 7.797186
+  min      = 7.382774
+  max      = 250.914291
+  stdev    = 12.160080
+[rank 21] gpuCalculateHatFunctions_nccl over 401 calls (ms):
+sum = 3371.448576
+  mean/avg = 8.407602
+  median   = 7.747301
+  min      = 7.375451
+  max      = 226.830948
+  stdev    = 10.963170
+[rank 20] gpuCalculateB_nccl over 400 calls (ms):
+sum = 3074.773731
+  mean/avg = 7.686934
+  median   = 5.146226
+  min      = 2.140825
+  max      = 273.543884
+  stdev    = 16.753808
+[rank 22] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7258.805555
+  mean/avg = 18.147014
+  median   = 15.749729
+  min      = 4.490751
+  max      = 441.043182
+  stdev    = 24.100761
+[rank 16] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7331.447373
+  mean/avg = 18.328618
+  median   = 16.560547
+  min      = 5.282600
+  max      = 443.577667
+  stdev    = 24.254227
+[rank 19] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6220.298773
+  mean/avg = 15.550747
+  median   = 13.162968
+  min      = 1.842261
+  max      = 446.080963
+  stdev    = 24.481483
+[rank 18] gpuCalculateB_nccl over 400 calls (ms):
+sum = 5930.232346
+  mean/avg = 14.825581
+  median   = 11.955513
+  min      = 2.190266
+  max      = 444.557892
+  stdev    = 24.599317
+[rank 17] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6958.823826
+  mean/avg = 17.397060
+  median   = 14.998689
+  min      = 4.860677
+  max      = 449.392273
+  stdev    = 24.542004
+[rank 23] gpuCalculateB_nccl over 400 calls (ms):
+sum = 7575.576111
+  mean/avg = 18.938940
+  median   = 16.610458
+  min      = 5.497319
+  max      = 453.815430
+  stdev    = 24.690767
+[rank 21] gpuCalculateB_nccl over 400 calls (ms):
+sum = 2592.188678
+  mean/avg = 6.480472
+  median   = 5.105666
+  min      = 1.425616
+  max      = 432.357483
+  stdev    = 21.492054
+[rank 22] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79911.679515
+  mean/avg = 3.312127
+  median   = 3.280507
+  min      = 3.055222
+  max      = 26.928680
+  stdev    = 0.265846
+[rank 20] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79422.497640
+  mean/avg = 3.291851
+  median   = 3.277163
+  min      = 3.086760
+  max      = 26.512171
+  stdev    = 0.253772
+[rank 16] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 80257.741039
+  mean/avg = 3.326470
+  median   = 3.291709
+  min      = 3.073304
+  max      = 26.540213
+  stdev    = 0.265729
+[rank 19] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79091.176028
+  mean/avg = 3.278119
+  median   = 3.255241
+  min      = 3.086760
+  max      = 22.651651
+  stdev    = 0.203400
+[rank 18] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79326.192416
+  mean/avg = 3.287860
+  median   = 3.265162
+  min      = 3.039879
+  max      = 22.683012
+  stdev    = 0.205858
+[rank 17] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 80252.400607
+  mean/avg = 3.326249
+  median   = 3.292987
+  min      = 3.048504
+  max      = 26.718775
+  stdev    = 0.266380
+[rank 23] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79609.444797
+  mean/avg = 3.299600
+  median   = 3.263547
+  min      = 3.009462
+  max      = 26.871401
+  stdev    = 0.263995
+[rank 21] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79597.026113
+  mean/avg = 3.299085
+  median   = 3.286283
+  min      = 3.073320
+  max      = 22.845419
+  stdev    = 0.204631
+[rank 13] gpuCalculateB_nccl over 400 calls (ms):
+sum = 6109.941560
+  mean/avg = 15.274854
+  median   = 13.247255
+  min      = 2.164341
+  max      = 440.820465
+  stdev    = 24.444395
+[rank 13] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79057.900236
+  mean/avg = 3.276740
+  median   = 3.252032
+  min      = 3.075071
+  max      = 22.629032
+  stdev    = 0.205710
+[rank 6] gpuMaxwellImage_nccl over 24127 calls (ms):
+sum = 79564.437227
+  mean/avg = 3.297734
+  median   = 3.281304
+  min      = 3.119223
+  max      = 22.703852
+  stdev    = 0.204010

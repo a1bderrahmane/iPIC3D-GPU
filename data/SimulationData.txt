@@ -10,12 +10,12 @@ qom[%d] = 1
 x-Length                 = 10
 y-Length                 = 10
 z-Length                 = 10
-Number of cells (x)      = 64
-Number of cells (y)      = 64
-Number of cells (z)      = 64
+Number of cells (x)      = 256
+Number of cells (y)      = 192
+Number of cells (z)      = 128
 ---------------------------
 Time step                = 0.15
-Number of cycles         = 15
+Number of cycles         = 6
 ---------------------------
 rho init species   0 = 1
 rho inject species 0 = 0

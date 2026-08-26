@@ -4,8 +4,8 @@
 #SBATCH --account=project_465002552
 #SBATCH --partition=standard-g
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=8
-#SBATCH --gpus-per-node=8
+#SBATCH --ntasks-per-node=2
+#SBATCH --gpus-per-node=2
 #SBATCH --cpus-per-task=6
 #SBATCH -o stdout
 #SBATCH -e stderr
@@ -34,26 +34,19 @@ chmod +x ./select_gpu
 mkdir -p ./rocprof_traces
 cat <<'EOF' > profile_wrap
 #!/bin/bash
-rocprofv3 --output-format pftrace \
-          --summary \
-          --hip-trace \
-          --hsa-trace \
-          --kernel-trace \
-          --memory-copy-trace \
-          --marker-trace \
-          --rccl-trace \
-          -d ./rocprof_traces \
-          -o trace_rank${SLURM_PROCID} \
-          -- "$@"
+#!/bin/bash
+
+# Single line to prevent bash line-continuation errors (\)
+rocprofv3 --sys-trace --rccl-trace --stats --summary -T --summary-units msec --output-format pftrace csv -d ./rocprof_traces -o trace_rank${SLURM_PROCID} -- "$@"
 EOF
 chmod +x ./profile_wrap
-# CPU_BIND="mask_cpu:7e,7e00"
+CPU_BIND="mask_cpu:7e,7e00"
 
-CPU_BIND="mask_cpu:7e000000000000,7e00000000000000"
-CPU_BIND="${CPU_BIND},7e0000,7e000000"
-CPU_BIND="${CPU_BIND},7e,7e00"
-##CPU_BIND="${CPU_BIND},7e00000000"
-CPU_BIND="${CPU_BIND},7e00000000,7e0000000000"
+# CPU_BIND="mask_cpu:7e000000000000,7e00000000000000"
+# CPU_BIND="${CPU_BIND},7e0000,7e000000"
+# CPU_BIND="${CPU_BIND},7e,7e00"
+# ##CPU_BIND="${CPU_BIND},7e00000000"
+# CPU_BIND="${CPU_BIND},7e00000000,7e0000000000"
 
 export OMP_NUM_THREADS=6
 export IPIC_FORCE_GPU_MPI=1

@@ -3,7 +3,7 @@
 #SBATCH -t 00:18:00
 #SBATCH --account=project_465002552
 #SBATCH --partition=standard-g
-#SBATCH --nodes=1              # Total number of nodes 
+#SBATCH --nodes=3              # Total number of nodes 
 #SBATCH --ntasks-per-node=8     # 8 MPI ranks per node
 #SBATCH --gpus-per-node=8 
 #SBATCH --cpus-per-task=6
@@ -26,9 +26,10 @@ export NCCL_NCHANNELS_PER_PEER=32
 # export NCCL_DEBUG_SUBSYS=INIT,GRAPH
 ###################
 ### in case we are using mutiple nodes , it prevents the fall back to tcp sockets for communication
-# module load aws-ofi-rccl
 
-# # Force RCCL to use the OFI plugin for Slingshot
+
+
+# Force RCCL to use the OFI plugin for Slingshot
 # export NCCL_NET_GDR_LEVEL=3
 # export FI_CXI_RX_MATCH_MODE=software
 

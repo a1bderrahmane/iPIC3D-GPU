@@ -1,0 +1,170 @@
+
+Lmod is automatically replacing "craype-x86-rome" with "craype-x86-trento".
+
+[0;31mE20260728 12:54:44.761862 22950664281664 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_gfx90a_code_object_id_1.out
+[m[0;31mE20260728 12:54:48.272295 22950664281664 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_gfx90a_code_object_id_2.out
+[m[0;31mE20260728 12:54:52.386848 22950664281664 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_gfx90a_code_object_id_3.out
+[m[0;31mE20260728 12:55:14.193434 22946202515136 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_40142_shader_engine_0_5772.att
+[m[0;31mE20260728 12:55:15.493064 22946202515136 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_40142_shader_engine_0_5774.att
+[m[0;31mE20260728 12:55:15.913673 22946202515136 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_40142_shader_engine_0_5776.att
+[m[0;31mE20260728 12:55:25.926592 22950664281664 output_stream.cpp:105] Opened result file: ./att_traces/att_rank0_agent_info.csv
+[rank 5] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.882513
+  mean/avg = 20.126073
+  median   = 10.603109
+  min      = 10.523429
+  max      = 77.220657
+  stdev    = 25.176474
+[rank 2] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.737627
+  mean/avg = 20.105375
+  median   = 10.577319
+  min      = 10.486919
+  max      = 77.182190
+  stdev    = 25.168651
+[rank 4] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.927310
+  mean/avg = 20.132473
+  median   = 10.617510
+  min      = 10.532389
+  max      = 77.224014
+  stdev    = 25.175127
+[rank 1] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.888454
+  mean/avg = 20.126922
+  median   = 10.600919
+  min      = 10.522038
+  max      = 77.241020
+  stdev    = 25.185078
+[rank 7] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.630397
+  mean/avg = 20.090057
+  median   = 10.562520
+  min      = 10.465079
+  max      = 77.206795
+  stdev    = 25.186246
+[rank 3] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.640998
+  mean/avg = 20.091571
+  median   = 10.561319
+  min      = 10.460839
+  max      = 77.223801
+  stdev    = 25.193082
+[rank 5] gpuCalculateB_nccl over 6 calls (ms):
+sum = 34.158617
+  mean/avg = 5.693103
+  median   = 5.586596
+  min      = 4.901951
+  max      = 6.446921
+  stdev    = 0.629290
+[rank 3] gpuCalculateB_nccl over 6 calls (ms):
+sum = 26.888895
+  mean/avg = 4.481482
+  median   = 4.609856
+  min      = 3.225611
+  max      = 5.180979
+  stdev    = 0.659665
+[rank 2] gpuCalculateB_nccl over 6 calls (ms):
+sum = 6.157458
+  mean/avg = 1.026243
+  median   = 1.021843
+  min      = 1.014563
+  max      = 1.049123
+  stdev    = 0.013197
+[rank 1] gpuCalculateB_nccl over 6 calls (ms):
+sum = 30.925140
+  mean/avg = 5.154190
+  median   = 5.357899
+  min      = 3.979243
+  max      = 5.609182
+  stdev    = 0.610618
+[rank 4] gpuCalculateB_nccl over 6 calls (ms):
+sum = 31.474281
+  mean/avg = 5.245713
+  median   = 5.247393
+  min      = 3.476342
+  max      = 6.344041
+  stdev    = 1.024449
+[rank 7] gpuCalculateB_nccl over 6 calls (ms):
+sum = 27.078223
+  mean/avg = 4.513037
+  median   = 4.688373
+  min      = 3.674441
+  max      = 5.077177
+  stdev    = 0.532007
+[rank 5] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1426.122386
+  mean/avg = 5.093294
+  median   = 5.100752
+  min      = 4.730431
+  max      = 9.236859
+  stdev    = 0.275850
+[rank 3] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1351.885437
+  mean/avg = 4.828162
+  median   = 4.804898
+  min      = 4.589777
+  max      = 8.960032
+  stdev    = 0.261710
+[rank 1] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1425.944132
+  mean/avg = 5.092658
+  median   = 5.099337
+  min      = 4.728213
+  max      = 9.226342
+  stdev    = 0.275414
+[rank 2] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1422.001705
+  mean/avg = 5.078578
+  median   = 5.090659
+  min      = 4.618098
+  max      = 9.218593
+  stdev    = 0.278138
+[rank 4] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1434.403080
+  mean/avg = 5.122868
+  median   = 5.127313
+  min      = 4.768671
+  max      = 9.228219
+  stdev    = 0.273254
+[rank 6] gpuCalculateHatFunctions_nccl over 7 calls (ms):
+sum = 140.812954
+  mean/avg = 20.116136
+  median   = 10.577720
+  min      = 10.490039
+  max      = 77.244072
+  stdev    = 25.191194
+[rank 7] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1350.816776
+  mean/avg = 4.824346
+  median   = 4.802695
+  min      = 4.585012
+  max      = 8.967141
+  stdev    = 0.262346
+[rank 6] gpuCalculateB_nccl over 6 calls (ms):
+sum = 20.893992
+  mean/avg = 3.482332
+  median   = 3.516919
+  min      = 2.785951
+  max      = 4.056205
+  stdev    = 0.567670
+[rank 6] gpuMaxwellImage_nccl over 280 calls (ms):
+sum = 1422.352305
+  mean/avg = 5.079830
+  median   = 5.092857
+  min      = 4.617972
+  max      = 9.222664
+  stdev    = 0.278232
+[m[0;31mF20260728 12:55:25.964701 22950664281664 tool.cpp:1730] Decoder library not found at ROCPROF_ATT_LIBRARY_PATH
+[m    @     0x14e02f2503ea  (unknown)
+    @     0x14e02f251233  (unknown)
+    @     0x14e02ef83913  (unknown)
+    @     0x14e02e8dd35f  (unknown)
+    @     0x14e02ef7b697  (unknown)
+    @     0x14e02ef7cda2  (unknown)
+    @     0x14dfa95dde6c  __libc_start_call_main
+    @     0x14dfa95ddf35  __libc_start_main_alias_2
+    @           0x202f41  _start
+[0;33mW20260728 12:55:25.975553 22950664281664 tool.cpp:1902] rocprofv3_error_signal_handler caught signal 6...
+[msrun: error: nid005151: task 0: Aborted
+srun: Terminating StepId=20338452.0

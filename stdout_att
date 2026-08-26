@@ -1,0 +1,11 @@
+ATT trace(s) for rank 0 (expect a SIGABRT further up in stderr -- that's normal, see top-of-file note):
+total 205315
+drwxrwx---  2 bouziane pepr_bouziane      4096 Jul 28 12:55 .
+drwxrwx--- 17 bouziane pepr_bouziane     12288 Jul 28 12:55 ..
+-rw-rw----  1 bouziane pepr_bouziane   1601376 Jul 28 12:55 att_rank0_40142_shader_engine_0_5772.att
+-rw-rw----  1 bouziane pepr_bouziane   3526504 Jul 28 12:55 att_rank0_40142_shader_engine_0_5774.att
+-rw-rw----  1 bouziane pepr_bouziane   1601520 Jul 28 12:55 att_rank0_40142_shader_engine_0_5776.att
+-rw-rw----  1 bouziane pepr_bouziane      3915 Jul 28 12:55 att_rank0_agent_info.csv
+-rw-rw----  1 bouziane pepr_bouziane     40888 Jul 28 12:54 att_rank0_gfx90a_code_object_id_1.out
+-rw-rw----  1 bouziane pepr_bouziane 210179872 Jul 28 12:54 att_rank0_gfx90a_code_object_id_2.out
+-rw-rw----  1 bouziane pepr_bouziane    579216 Jul 28 12:54 att_rank0_gfx90a_code_object_id_3.out

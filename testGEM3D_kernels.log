@@ -1,0 +1,266 @@
+
+Number of processes = 8
+-------------------------
+Number of threads = 6
+-------------------------
+
+Virtual Cartesian Processors Topology
+-------------------------------------
+Processors grid: 2x2x2
+Periodicity X: 1
+Periodicity Y: 0
+Periodicity Z: 1
+
+
+Simulation Parameters
+---------------------
+Number of species    = 4
+qom[0] = -64
+qom[1] = 1
+qom[2] = -64
+qom[3] = 1
+x-Length                 = 10
+y-Length                 = 10
+z-Length                 = 10
+Number of cells (x)      = 256
+Number of cells (y)      = 192
+Number of cells (z)      = 128
+Time step                = 0.15
+Number of cycles         = 6
+Results saved in  : data
+Case type         : GEM
+Simulation name   : testGEM3D_kernels
+Smoothing         : on (alpha=0.2, Niter=6)
+---------------------
+EM Field Boundary Conditions
+---------------------
+Xleft  : 0 (perfect conductor)
+Xright : 0 (perfect conductor)
+Yleft  : 0 (perfect conductor)
+Yright : 0 (perfect conductor)
+Zleft  : 0 (perfect conductor)
+Zright : 0 (perfect conductor)
+SAL (absorbing layer): no
+---------------------
+Particle Boundary Conditions
+---------------------
+Xleft  : 1 (perfect mirror)
+Xright : 1 (perfect mirror)
+Yleft  : 1 (perfect mirror)
+Yright : 1 (perfect mirror)
+Zleft  : 1 (perfect mirror)
+Zright : 1 (perfect mirror)
+E inflow BCs in GMRes : yes (applied per-face where bcPface == 2)
+---------------------
+Field Corrections
+---------------------
+Poisson div(E) correction  : no
+div(B) cleaning            : no
+---------------------
+Planet Boundary
+---------------------
+Reflection type            : 0 (specular)
+---------------------
+Exosphere Ionization
+---------------------
+Status                     : disabled
+---------------------
+Check Simulation Constraints
+---------------------
+Accuracy Constraint:  
+u_th < dx/dt species 0.....OK
+v_th < dy/dt species 0......OK
+u_th < dx/dt species 1.....OK
+v_th < dy/dt species 1......OK
+u_th < dx/dt species 2.....OK
+v_th < dy/dt species 2......OK
+u_th < dx/dt species 3.....OK
+v_th < dy/dt species 3......OK
+
+Finite Grid Stability Constraint:  
+OK u_th*dt/dx (species 0) = 0.1728 > .1
+OK v_th*dt/dy (species 0) = 0.1296 > .1
+WARNING. u_th*dt/dx (species 1) = 0.048384 < .1
+WARNING. v_th*dt/dy (species 1) = 0.036288 < .1
+OK u_th*dt/dx (species 2) = 0.1728 > .1
+OK v_th*dt/dy (species 2) = 0.1296 > .1
+WARNING. u_th*dt/dx (species 3) = 0.048384 < .1
+WARNING. v_th*dt/dy (species 3) = 0.036288 < .1
+
+CFL Condition (c*dt/dx < 1):  
+---------------------
+Speed of light c     = 1
+Time step dt         = 0.15
+Grid spacing dx      = 0.0390625
+Grid spacing dy      = 0.0520833
+Grid spacing dz      = 0.078125
+c*dt/dx              = 3.84  WARNING: CFL VIOLATED!
+c*dt/dy              = 2.88  WARNING: CFL VIOLATED!
+c*dt/dz              = 1.92  WARNING: CFL VIOLATED!
+c*dt*|1/dx|          = 5.16976  WARNING: multi-dim CFL VIOLATED!
+
+Numerical Resolution Parameters:  
+---------------------
+Larmor radius / dx (species 0) = 0.923077  (rL = 0.0360577, Omega_c*dt = 0.1872)
+Larmor radius / dx (species 1) = 16.5415  (rL = 0.646154, Omega_c*dt = 0.002925)
+Larmor radius / dx (species 2) = 0.923077  (rL = 0.0360577, Omega_c*dt = 0.1872)
+Larmor radius / dx (species 3) = 16.5415  (rL = 0.646154, Omega_c*dt = 0.002925)
+Species 0 (qom=-64): omega_p = 8, d_s/dx = 3.2, omega_p*dt = 1.2  OK
+Species 1 (qom=1): omega_p = 1, d_s/dx = 25.6, omega_p*dt = 0.15  OK
+Species 2 (qom=-64): omega_p = 2.52982, d_s/dx = 10.1193, omega_p*dt = 0.379473  OK
+Species 3 (qom=1): omega_p = 0.316228, d_s/dx = 80.9543, omega_p*dt = 0.0474342  OK
+
+Estimated Memory Per Rank
+---------------------
+Local grid (with ghosts): 130x98x66 cells, 131x99x67 nodes
+HOST:   EMfields = 890.892 MB, particles = 12288 MB, comm = 1228.8 MB, field buf = 156.295 MB
+        TOTAL = 14564 MB (14.2226 GB)
+DEVICE: particles = 17203.2 MB, buffers = 4684.8 MB, moments = 265.174 MB, field = 156.295 MB, sort = 3264.09 MB
+        TOTAL = 25573.6 MB (24.9742 GB)  (+ 500 MB CUDA context)
+COMBINED = 40137.5 MB (39.1968 GB)
+---------------------
+------------------------------------------
+Initialize GEM Challenge with Perturbation
+------------------------------------------
+B0x                              = 0.0195
+B0y                              = 0
+B0z                              = 0
+Delta (current sheet thickness) = 0.5
+rho species 0 = 1 DRIFTING 
+rho species 1 = 1 DRIFTING 
+rho species 2 = 0.1 BACKGROUND 
+rho species 3 = 0.1 BACKGROUND 
+-------------------------
+(2.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(2.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(3.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(3.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(0.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(0.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(1.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(1.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(6.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(6.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(5.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(5.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(7.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(7.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(4.0) WARNING init(), IOManager.cpp:128: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(4.0) WARNING init(), IOManager.cpp:133: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+CUDA Init finished
+ ======= Cycle 0 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+Initial residual: 0.59195 norm b vector (source) = 0.591947
+GMRES converged at restart # 2; iteration #2 with error: 8.61268e-07
+  [Cycle 0] Particle sorting: ON
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+*** B CALCULATION [GPU] ***
+Execution time cycle: 7080.43 ms  [sort=76.9038 field=303.56 da_wait=0.0049 mover+out=6413.75 exchange+sort+moments=76.3111 B=197.107 momentsAwait=12.7884 outCopy=0.002154]
+ ======= Cycle 1 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+Initial residual: 0.439389 norm b vector (source) = 0.763094
+GMRES converged at restart # 2; iteration #4 with error: 7.79708e-07
+  [Cycle 1] Particle sorting: ON
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 5
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 6
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(2.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(7.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 7
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 8
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 8
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 8
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 8
+(4.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 8
+(0.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 9
+*** B CALCULATION [GPU] ***
+Execution time cycle: 713.267 ms  [sort=0.069565 field=327.577 da_wait=0.00012 mover+out=0.028395 exchange+sort+moments=159.372 B=213.402 momentsAwait=12.8174 outCopy=0.000771]
+ ======= Cycle 2 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+(1.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(5.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+(6.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+Initial residual: 0.416787 norm b vector (source) = 0.379515
+GMRES converged at restart # 2; iteration #5 with error: 9.3364e-07
+  [Cycle 2] Particle sorting: ON
+*** B CALCULATION [GPU] ***
+Execution time cycle: 709.107 ms  [sort=0.059506 field=333.806 da_wait=0.00012 mover+out=0.027143 exchange+sort+moments=148.2 B=214.177 momentsAwait=12.8364 outCopy=0.001032]
+ ======= Cycle 3 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+Initial residual: 0.254876 norm b vector (source) = 0.494436
+GMRES converged at restart # 2; iteration #4 with error: 9.24755e-07
+  [Cycle 3] Particle sorting: ON
+*** B CALCULATION [GPU] ***
+Execution time cycle: 699.617 ms  [sort=0.061289 field=327.195 da_wait=0.000111 mover+out=0.031511 exchange+sort+moments=146.287 B=213.277 momentsAwait=12.7647 outCopy=0.000712]
+ ======= Cycle 4 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+(3.0) DEBUG send_start(), BlockCommunicator.h:559: inserted new block 4
+Initial residual: 0.298338 norm b vector (source) = 0.388534
+GMRES converged at restart # 2; iteration #5 with error: 9.10601e-07
+  [Cycle 4] Particle sorting: ON
+*** B CALCULATION [GPU] ***
+Execution time cycle: 705.007 ms  [sort=0.060447 field=332.976 da_wait=0.0002 mover+out=0.027784 exchange+sort+moments=146.014 B=212.974 momentsAwait=12.9554 outCopy=0.000762]
+ ======= Cycle 5 ======= 
+*** E CALCULATION [GPU] ***
+*** MAXWELL SOLVER [GPU] ***
+Initial residual: 0.241496 norm b vector (source) = 0.418477
+GMRES converged at restart # 2; iteration #4 with error: 9.89545e-07
+  [Cycle 5] Particle sorting: ON
+*** B CALCULATION [GPU] ***
+Execution time cycle: 698.615 ms  [sort=0.058483 field=327.361 da_wait=0.000181 mover+out=0.027293 exchange+sort+moments=144.774 B=213.469 momentsAwait=12.9239 outCopy=0.000701]
