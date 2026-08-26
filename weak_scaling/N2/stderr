@@ -1,0 +1,23 @@
+
+Lmod is automatically replacing "cce/19.0.0" with "gcc-native/14.2".
+
+
+Lmod is automatically replacing "PrgEnv-cray/8.6.0" with "PrgEnv-gnu/8.6.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-hdf5-parallel/1.14.3.5     2) cray-libsci/25.03.0     3) cray-mpich/8.1.32
+
+
+Lmod is automatically replacing "gcc-native/14.2" with "cce/19.0.0".
+
+
+Lmod is automatically replacing "PrgEnv-gnu/8.6.0" with "PrgEnv-cray/8.6.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-hdf5-parallel/1.14.3.5     2) cray-libsci/25.03.0     3) cray-mpich/8.1.32
+
+slurmstepd: error: *** STEP 20219694.1 ON nid005202 CANCELLED AT 2026-07-24T20:00:36 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 20219694 ON nid005202 CANCELLED AT 2026-07-24T20:00:36 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.

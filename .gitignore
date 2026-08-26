@@ -14,3 +14,7 @@ thirdparty/
 *.nsys-rep
 *.csv
 *.sqlite
+core
+att_traces/
+env/rocprof_tools/
+*.vtk
