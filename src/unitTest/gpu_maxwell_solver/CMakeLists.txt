@@ -19,7 +19,7 @@ option(USE_NCCL "Use NCCL instead of MPI for graph-capturable halo exchange (req
 set(CUDA_ARCH "75" CACHE STRING "CUDA compute capability to compile for")
 set(HIP_ARCH "gfx90a" CACHE STRING "HIP GPU architecture")
 # Keep this default in sync with TestInput::{x,y,z}len.
-set(GPU_MAXWELL_MPI_PROCS "8" CACHE STRING "MPI ranks used by CTest")
+set(GPU_MAXWELL_MPI_PROCS "2" CACHE STRING "MPI ranks used by CTest")
 
 if(NOT HIP_ON)
   enable_language(CUDA)

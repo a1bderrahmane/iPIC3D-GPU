@@ -2626,6 +2626,7 @@ void EMfields3D::gpuCalculateB(int cycle) {
 // =========================================================================
 
 void EMfields3D::gpuCalculateHatFunctions(int cycle) {
+  g_hatFunctionsTimer.begin(solverStream_);
   const Grid* grid = &get_grid();
   double _invdx = grid->get_invdx();
   double _invdy = grid->get_invdy();
