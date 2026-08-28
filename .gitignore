@@ -20,3 +20,4 @@ att_traces/
 env/rocprof_tools/
 *.vtk
 weak_scaling/
+*.pftrace
