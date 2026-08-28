@@ -9,7 +9,13 @@ set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 option(HIP_ON "Use HIP" OFF)
-option(HALO_OVERLAP "Compile GPU field code with split halo overlap" OFF)
+# Overlapped halo-exchange path in EMfields3DGPU.cpp. Must be ON: the #else
+# (blocking) fallback of gpuMaxwellImage_cuda_graph_refactored references
+# gpuLapN2N_3_finish, which does not exist, so OFF will not compile.
+option(HALO_OVERLAP "Enable overlapped halo exchange path" ON)
+option(CUDA_GRAPH "Enable cuda graph optimization (requires GPU_SOLVER)" OFF)
+option(USE_NCCL "Use NCCL instead of MPI for graph-capturable halo exchange (requires CUDA_GRAPH)" OFF)
+
 set(CUDA_ARCH "75" CACHE STRING "CUDA compute capability to compile for")
 set(HIP_ARCH "gfx90a" CACHE STRING "HIP GPU architecture")
 # Keep this default in sync with TestInput::{x,y,z}len.
@@ -28,6 +34,30 @@ else()
 endif()
 
 find_package(MPI REQUIRED COMPONENTS CXX)
+
+# Find NCCL (needed for the CUDA-graph-capturable NCCL halo exchange path)
+if(CUDA_GRAPH AND USE_NCCL AND NOT HIP_ON)
+  find_path(NCCL_INCLUDE_DIR
+    NAMES nccl.h
+    HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
+    PATH_SUFFIXES include
+    )
+  find_library(NCCL_LIBRARY
+    NAMES nccl
+    HINTS ${NCCL_ROOT} $ENV{NCCL_ROOT}
+    PATH_SUFFIXES lib lib64
+    )
+  if(NOT NCCL_INCLUDE_DIR OR NOT NCCL_LIBRARY)
+    message(FATAL_ERROR "NCCL is required (CUDA_GRAPH and USE_NCCL are both ON) but was not found. "
+      "Set NCCL_ROOT to the NCCL install prefix (e.g. -DNCCL_ROOT=/path/to/nccl or the NCCL_ROOT env var).")
+  endif()
+  add_library(NCCL::NCCL UNKNOWN IMPORTED)
+  set_target_properties(NCCL::NCCL PROPERTIES
+    IMPORTED_LOCATION "${NCCL_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${NCCL_INCLUDE_DIR}"
+    )
+  message(STATUS "Found NCCL: ${NCCL_LIBRARY} (include: ${NCCL_INCLUDE_DIR})")
+endif()
 
 set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 set(SOURCE_CODE_DIR ${PROJECT_ROOT}/src/ipic3d)
@@ -79,6 +109,33 @@ target_link_libraries(gpuMaxwellSolverTest PRIVATE MPI::MPI_CXX)
 target_compile_definitions(gpuMaxwellSolverTest PUBLIC GPU_SOLVER NO_HDF5)
 if(HALO_OVERLAP)
   target_compile_definitions(gpuMaxwellSolverTest PUBLIC HALO_OVERLAP)
+endif()
+
+if(HALO_OVERLAP)
+  target_compile_definitions(gpuMaxwellSolverTest PUBLIC HALO_OVERLAP)
+  message(STATUS "HALO_OVERLAP path enabled.")
+else()
+  message(WARNING
+    "HALO_OVERLAP is OFF: the blocking #else fallback in "
+    "gpuMaxwellImage_cuda_graph_refactored references gpuLapN2N_3_finish "
+    "and will not compile until that path is fixed.")
+endif()
+if(CUDA_GRAPH)
+	target_compile_definitions(gpuMaxwellSolverTest PUBLIC CUDA_GRAPH)
+  message(STATUS "Cuda Graph enabled for GPU field solver")
+endif()
+
+if(USE_NCCL)
+  if(NOT CUDA_GRAPH)
+    message(FATAL_ERROR "USE_NCCL requires CUDA_GRAPH=ON")
+  endif()
+  target_compile_definitions(gpuMaxwellSolverTest PUBLIC USE_NCCL)
+  message(STATUS "NCCL halo exchange enabled")
+endif()
+
+if(CUDA_GRAPH AND USE_NCCL AND NOT HIP_ON)
+  target_link_libraries(gpuMaxwellSolverTest PRIVATE NCCL::NCCL)
+  message(STATUS "  NCCL                         : ${NCCL_LIBRARY}")
 endif()
 
 if(NOT HIP_ON)

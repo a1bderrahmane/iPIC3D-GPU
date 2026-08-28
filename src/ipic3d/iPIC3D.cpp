@@ -27,6 +27,9 @@
 #include "debug.h"
 #include <chrono>
 #include <stdio.h>
+#if defined(CUDA_GRAPH) && !defined(HIPIFLY)
+#include <cuda_profiler_api.h>
+#endif
 
 #if IPIC3D_COMPILE_DIAGNOSTIC_CALCULATIONS
 #include "dataAnalysis.cuh"
@@ -123,7 +126,7 @@ static int runSimulation(int argc, char** argv) {
     timeTasks.print_cycle_times(i); // print out total time for all tasks
 #endif
   }
-
+//cudaProfilerStop();
 #ifdef LOG_TASKS_TOTAL_TIME
   timeTasks.print_tasks_total_times();
 #endif

@@ -109,4 +109,27 @@
 #define curand_normal hiprand_normal
 #define curand_uniform hiprand_uniform
 
+// ============================================================
+// CUDA Graphs -> HIP Graphs
+// ============================================================
+#define cudaGraph_t                          hipGraph_t
+#define cudaGraphExec_t                       hipGraphExec_t
+#define cudaGraphCreate                       hipGraphCreate
+#define cudaGraphDestroy                      hipGraphDestroy
+#define cudaGraphExecDestroy                  hipGraphExecDestroy
+#define cudaGraphInstantiate                  hipGraphInstantiate
+#define cudaGraphLaunch                       hipGraphLaunch
+
+
+// Stream capture
+#define cudaStreamBeginCapture                 hipStreamBeginCapture
+#define cudaStreamEndCapture                   hipStreamEndCapture
+#define cudaStreamCaptureModeThreadLocal       hipStreamCaptureModeThreadLocal
+// ============================================================
+// NCCL -> RCCL
+// ============================================================
+#define nvtxRangePush           roctxRangePushA   // HIP has no wchar variant; A-suffix covers both call sites
+#define nvtxRangePop             roctxRangePop
+#define nvtxRangeEnd              roctxRangeStop
+
 #endif // HIPIFLY_HPP

@@ -37,6 +37,10 @@
 #include "outputPrepare.h"
 #include <iomanip>
 
+#if defined(CUDA_GRAPH) && !defined(HIPIFLY)
+#include <cuda_runtime.h>
+#include <cuda_profiler_api.h>
+#endif
 #ifdef GPU_SOLVER
 #include "GPUFieldPacking.cuh"
 #endif
@@ -1468,8 +1472,11 @@ void c_Solver::CalculateField(int cycle) {
   timeTasks_set_main_task(TimeTasks::FIELDS);
 
 #ifdef GPU_SOLVER
+ 
   // Full GPU field solver — results stay in device arrays (d_Ex, d_Exth, ...)
+//  cudaProfilerStart();
   EMf->gpuCalculateE(cycle);
+  //cudaProfilerStop();
   // Record event so particle packing can wait for solver completion
   cudaErrChk(cudaEventRecord(solverDoneEvent, EMf->gpuSolverStream()));
 #else
@@ -2705,7 +2712,15 @@ void c_Solver::CalculateB(int cycle) {
   auto tB0 = std::chrono::high_resolution_clock::now();
 #ifdef GPU_SOLVER
   // Full GPU B solver — results stay in device arrays (d_Bxc, d_Bxn, ...)
+  #ifdef CUDA_GRAPH
+  #ifdef USE_NCCL
+  EMf->gpuCalculateB_nccl(cycle);
+  #else
+  EMf->gpuCalculateB_cuda_graph(cycle);
+  #endif
+  #else
   EMf->gpuCalculateB(cycle);
+  #endif
 #else
   // Legacy CPU B solver
   EMf->calculateB(cycle);
@@ -2801,7 +2816,15 @@ void c_Solver::MomentsAwait(int cycle) {
   EMf->gpuInterpDensitiesN2C();
 
   // Phase 3: hat functions (Jhat, rhohat) — already GPU-implemented
-  EMf->gpuCalculateHatFunctions(cycle);
+  #ifdef CUDA_GRAPH
+  #ifdef USE_NCCL
+  EMf->gpuCalculateHatFunctions_nccl();
+  #else
+  EMf->gpuCalculateHatFunctions_cuda_graph();
+  #endif
+  #else
+  EMf->gpuCalculateHatFunctions();
+  #endif
 
   // Record momentsPipelineDoneEvt at the tail of the solver stream so that
   // ScheduleHeatFlux() (next cycle, step 2) can gate its D2D copy of
@@ -3549,3 +3572,4 @@ void c_Solver::injectExosphereParticles() {
     future.get();
   }
 }
+
