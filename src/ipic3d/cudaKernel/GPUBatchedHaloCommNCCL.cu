@@ -197,15 +197,15 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
         dim3 block(BLK, BLK);
         if (xlN == myrank && xrN == myrank) {
             dim3 grid(((ny-2)+BLK-1)/BLK, ((nz-2)+BLK-1)/BLK, nFields);
-            gpuBatchSelfCopyFaceX<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz);
+            gpuBatchSelfCopyFaceX<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz, offset);
         }
         if (ylN == myrank && yrN == myrank) {
             dim3 grid(((nx-2)+BLK-1)/BLK, ((nz-2)+BLK-1)/BLK, nFields);
-            gpuBatchSelfCopyFaceY<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz);
+            gpuBatchSelfCopyFaceY<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz, offset);
         }
         if (zlN == myrank && zrN == myrank) {
             dim3 grid(((nx-2)+BLK-1)/BLK, ((ny-2)+BLK-1)/BLK, nFields);
-            gpuBatchSelfCopyFaceZ<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz);
+            gpuBatchSelfCopyFaceZ<<<grid, block, 0, stream>>>(d_ptrs, nx, ny, nz, offset);
         }
         // No sync needed: self-copy and unpack share the same stream, so
         // CUDA stream ordering guarantees self-copy completes first.
@@ -318,19 +318,19 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
             int nblks = (maxDim + 255) / 256;
             if (xlN == myrank && xrN == myrank) {
                 dim3 grid(nblks, nFields);
-                gpuBatchSelfCopyEdgeX<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyEdgeX<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     zrN != MPI_PROC_NULL, zlN != MPI_PROC_NULL,
                     yrN != MPI_PROC_NULL, ylN != MPI_PROC_NULL);
             }
             if (ylN == myrank && yrN == myrank) {
                 dim3 grid(nblks, nFields);
-                gpuBatchSelfCopyEdgeY<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyEdgeY<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     xrN != MPI_PROC_NULL, xlN != MPI_PROC_NULL,
                     zrN != MPI_PROC_NULL, zlN != MPI_PROC_NULL);
             }
             if (zlN == myrank && zrN == myrank) {
                 dim3 grid(nblks, nFields);
-                gpuBatchSelfCopyEdgeZ<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyEdgeZ<<<grid, 256, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     yrN != MPI_PROC_NULL, ylN != MPI_PROC_NULL,
                     xrN != MPI_PROC_NULL, xlN != MPI_PROC_NULL);
             }
@@ -404,15 +404,15 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
             // ---- Corner self-copy (periodic) ----
             {
                 if (xlN == myrank && xrN == myrank) {
-                    gpuBatchSelfCopyCornerX<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                    gpuBatchSelfCopyCornerX<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                         ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                         zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
                 } else if (ylN == myrank && yrN == myrank) {
-                    gpuBatchSelfCopyCornerY<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                    gpuBatchSelfCopyCornerY<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                         xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL,
                         zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
                 } else if (zlN == myrank && zrN == myrank) {
-                    gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                    gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                         ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                         xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL);
                 }
@@ -433,15 +433,15 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
             // Match CPU NBDerivedHaloComm: local periodic corner copies are
             // still required even when no non-self corner exchange exists.
             if (xlN == myrank && xrN == myrank) {
-                gpuBatchSelfCopyCornerX<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyCornerX<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                     zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
             } else if (ylN == myrank && yrN == myrank) {
-                gpuBatchSelfCopyCornerY<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyCornerY<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL,
                     zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
             } else if (zlN == myrank && zrN == myrank) {
-                gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz,
+                gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                     xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL);
             }

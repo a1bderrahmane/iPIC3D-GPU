@@ -46,9 +46,9 @@
 #include "GPUHaloComm.cuh"
 #if defined(IPIC3D_GPU_CYCLE_DIAGNOSTICS)
 #include "GPUCycleDiagnostics.cuh"
+#endif
 #if defined(CUDA_GRAPH) && defined(USE_NCCL)
 #include "GPUNcclTypeDef.cuh" // for ncclComm_t, used below
-#endif
 #endif
 #endif // GPU_SOLVER
 
