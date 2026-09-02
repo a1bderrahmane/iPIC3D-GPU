@@ -10,32 +10,58 @@
 #SBATCH -o stdout
 #SBATCH -e stderr
 
-module load LUMI/25.03  partition/G
-module load PrgEnv-cray/8.6.0
-module load craype-accel-amd-gfx90a
-module load rocm/6.3.4
+###############################
+# libiPIC3Dlib.so is linked against LUMI/25.09 + rocm/6.4.4 + cray-mpich/9.0.1
+# (see CMakeCache.txt / readelf -d build/libiPIC3Dlib.so). lumiGPUrocm644.profile
+# below loads that exact stack via `module --force purge`, so no separate
+# LUMI/25.03 module loads belong here - they'd only get purged anyway, and
+# reintroducing cray-mpich/8.1.32 later doesn't even exist under LUMI/25.09.
 
-##############
-###################
+rccl_setup_root=/pfs/lustrep4/users/bouziane/RCCLtest
+source "${rccl_setup_root}/lumiGPUrocm644.profile"
+
+# The aws-ofi-nccl plugin is only for INTER-node traffic over Slingshot/CXI.
+# On a single node, RCCL talks to the other 7 local GPUs over P2P/XGMI and
+# never needs libfabric at all; forcing NCCL_NET=OFI here made every rank on
+# the same node fight to open a CXI domain on the same NICs, which is exactly
+# what threw "NET/OFI Couldn't create domain: ENOSYS". Only force OFI when
+# actually spanning multiple nodes (see RCCLtest README: "For a single-node
+# job ... omit the remaining plugin setup and --network option").
+srun_network_opt=()
+if [[ "${SLURM_NNODES:-1}" -gt 1 ]]; then
+  export OFI_RCCL_PREFIX="${rccl_setup_root}/.local/aws-ofi-nccl-1.21.1-rocm-6.4.4"
+  export NCCL_NET_PLUGIN="${OFI_RCCL_PREFIX}/lib/librccl-net.so"
+  if [[ ! -r "${NCCL_NET_PLUGIN}" ]]; then
+      echo "Plugin not found: ${NCCL_NET_PLUGIN}" >&2
+      exit 1
+  fi
+  export LD_LIBRARY_PATH="${OFI_RCCL_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
+
+  export NCCL_NET=OFI
+  export FI_PROVIDER=cxi
+  export NCCL_DEBUG=INFO
+  export NCCL_DEBUG_SUBSYS=INIT,GRAPH
+  # LUMI-G Slingshot tuning (RCCLtest README "Configuration defaults").
+  export HSA_FORCE_FINE_GRAIN_PCIE=1
+  export FI_MR_CACHE_MONITOR=userfaultfd
+  export FI_CXI_DISABLE_HOST_REGISTER=1
+  export FI_CXI_DEFAULT_CQ_SIZE=131072
+  export FI_CXI_RDZV_PROTO=alt_read
+  export FI_CXI_RDZV_EAGER_SIZE=0
+  export FI_CXI_RDZV_THRESHOLD=0
+  export FI_CXI_RDZV_GET_MIN=0
+  export FI_CXI_DEFAULT_TX_SIZE=2048
+  export FI_CXI_RX_MATCH_MODE=hybrid
+  export NCCL_CROSS_NIC=1
+  export NCCL_NET_GDR_LEVEL=PHB
+  export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+
+  srun_network_opt=(--network=disable_rdzv_get)
+fi
+
 export NCCL_IGNORE_CPU_AFFINITY=1
-export NCCL_NET_GDR_LEVEL=3
 export NCCL_NCHANNELS_PER_PEER=32
-
-## DEBUGGING RCCL
-# export NCCL_DEBUG=INFO
-# export NCCL_DEBUG_SUBSYS=INIT,GRAPH
-###################
-### in case we are using mutiple nodes , it prevents the fall back to tcp sockets for communication
-# module load aws-ofi-rccl
-
-# # Force RCCL to use the OFI plugin for Slingshot
-# export NCCL_NET_GDR_LEVEL=3
-# export FI_CXI_RX_MATCH_MODE=software
-
-# export NCCL_BUFFSIZE=2097152
-##########
 export MPICH_GPU_SUPPORT_ENABLED=1
-module load cray-mpich/8.1.32
 
 cat <<'EOF' > select_gpu
 #!/bin/bash
@@ -62,6 +88,6 @@ executable=/users/bouziane/iPIC3D-GPU/build/iPIC3D
 inputfile=/users/bouziane/iPIC3D-GPU/testGEM3D.inp
 output_file=/users/bouziane/iPIC3D-GPU/testGEM3D.log
 
-srun bash -c 'echo "rank=$SLURM_PROCID local=$SLURM_LOCALID ROCR=$ROCR_VISIBLE_DEVICES HIP=$HIP_VISIBLE_DEVICES";'
-srun  --cpu-bind=${CPU_BIND} ${executable} ${inputfile} > ${output_file}
+srun "${srun_network_opt[@]}" bash -c 'echo "rank=$SLURM_PROCID local=$SLURM_LOCALID ROCR=$ROCR_VISIBLE_DEVICES HIP=$HIP_VISIBLE_DEVICES";'
+srun "${srun_network_opt[@]}" --cpu-bind=${CPU_BIND} ${executable} ${inputfile} > ${output_file}
 rm -rf ./select_gpu

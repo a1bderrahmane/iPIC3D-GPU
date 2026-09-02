@@ -1,14 +1,14 @@
 module --force purge
-module load LUMI/25.03  partition/G
+module load LUMI/25.09  partition/G
 module load lumi-tools/24.05 
 module load PrgEnv-cray/8.6.0
 module load craype-accel-amd-gfx90a
-module load rocm/6.3.4
+module load rocm/6.4.4
 
 export MPICH_GPU_SUPPORT_ENABLED=1
-module load cray-mpich/8.1.32
-module load buildtools/25.03
-module load cray-hdf5-parallel/1.14.3.5
+module load cray-mpich/9.0.1
+module load buildtools/25.09
+# module load cray-hdf5-parallel/1.14.3.5
 # ###################
 # export NCCL_IGNORE_CPU_AFFINITY=1
 # export NCCL_NET_GDR_LEVEL=3

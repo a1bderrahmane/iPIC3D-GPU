@@ -374,6 +374,28 @@ if(HIP_ON)
   # to inject GPU offload registration code we don't want.
   target_link_options(iPIC3Dlib PRIVATE -fgpu-rdc --hip-link)
 
+  if(USE_OPENMP)
+    # --hip-link above makes HIP the target's link language, so
+    # OpenMP::OpenMP_CXX's $<COMPILE_LANGUAGE:CXX>-gated link flags never
+    # match and -fopenmp silently drops off the final link line, leaving
+    # omp_get_max_threads undefined at runtime. Force it back on.
+    #
+    # The .cpp objects are compiled through Cray's CC wrapper, which (with
+    # craype-accel-amd-gfx90a loaded) enables its own OpenMP layer
+    # (-fcray-openmp) referencing _cray$mt_* symbols from libcraymp, not
+    # plain libomp. CC's own link step pulls in -lcraymp -lcrayacc_amdgpu
+    # automatically; replicate that since our link step bypasses CC.
+    #
+    # CC also adds an implicit -L for the directory holding those two
+    # libraries (from the cce module's CRAYLIBS_X86_64); since we invoke
+    # the linker directly we have to add it ourselves or -lcraymp /
+    # -lcrayacc_amdgpu fail with "unable to find library".
+    if(DEFINED ENV{CRAYLIBS_X86_64})
+      target_link_options(iPIC3Dlib PRIVATE -L$ENV{CRAYLIBS_X86_64})
+    endif()
+    target_link_options(iPIC3Dlib PRIVATE -fopenmp -lcraymp -lcrayacc_amdgpu)
+  endif()
+
   set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES ${HIP_ARCH})
 else()
   enable_language(CUDA)
