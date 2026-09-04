@@ -51,12 +51,10 @@
 #include <cstdio>
 #include <MPIdata.h>
 #include <chrono>
-#ifdef CUDA_GRAPH
 #ifdef HIPIFLY
 #include <roctracer/roctx.h>
 #else
 #include <nvtx3/nvToolsExt.h>
-#endif
 #endif
 namespace
 {
@@ -1010,9 +1008,7 @@ void EMfields3D::gpuLapN2N_3(GPUFieldArray3& lapA, GPUFieldArray3& fieldA,
 void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
 {
   g_maxwellImageTimer.begin(solverStream_);
-  #ifdef CUDA_GRAPH
   nvtxRangePush("gpuMaxwellImage");
-  #endif
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
   double _invdx = grid->get_invdx();
@@ -1110,9 +1106,7 @@ void EMfields3D::gpuMaxwellImage(cudaSolverType *d_im, cudaSolverType *d_vector)
   gpuPhys2Solver3(d_im,
                   d_imageX.devPtr(), d_imageY.devPtr(), d_imageZ.devPtr(),
                   nxn, nyn, nzn, solverStream_);
-  #ifdef CUDA_GRAPH
   nvtxRangePop();
-  #endif
   g_maxwellImageTimer.end(solverStream_);
 }
 // =========================================================================

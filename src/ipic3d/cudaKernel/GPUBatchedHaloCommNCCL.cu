@@ -412,7 +412,7 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
                         xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL,
                         zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
                 } else if (zlN == myrank && zrN == myrank) {
-                    gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
+                    gpuBatchSelfCopyCornerZ<<<nFields, 32, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                         ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                         xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL);
                 }
@@ -441,7 +441,7 @@ void EMfields3D::gpuBatchedHaloExchangeNCCL(
                     xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL,
                     zlN != MPI_PROC_NULL, zrN != MPI_PROC_NULL);
             } else if (zlN == myrank && zrN == myrank) {
-                gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
+                gpuBatchSelfCopyCornerZ<<<nFields, 32, 0, stream>>>(d_ptrs, nx, ny, nz, offset,
                     ylN != MPI_PROC_NULL, yrN != MPI_PROC_NULL,
                     xlN != MPI_PROC_NULL, xrN != MPI_PROC_NULL);
             }

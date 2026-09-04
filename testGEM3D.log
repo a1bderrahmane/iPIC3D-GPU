@@ -1,12 +1,16 @@
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==PROF== Connected to process 733761 (/afs/pdc.kth.se/home/b/bouziane/Private/iPIC3D-GPU/build/iPIC3D)
+==PROF== Connected to process 733762 (/afs/pdc.kth.se/home/b/bouziane/Private/iPIC3D-GPU/build/iPIC3D)
 
-Number of processes = 8
+Number of processes = 2
 -------------------------
 Number of threads = 6
 -------------------------
 
 Virtual Cartesian Processors Topology
 -------------------------------------
-Processors grid: 2x2x2
+Processors grid: 2x1x1
 Periodicity X: 1
 Periodicity Y: 0
 Periodicity Z: 1
@@ -112,12 +116,12 @@ Species 3 (qom=1): omega_p = 0.316228, d_s/dx = 20.2386, omega_p*dt = 0.0474342 
 
 Estimated Memory Per Rank
 ---------------------
-Local grid (with ghosts): 34x34x34 cells, 35x35x35 nodes
-HOST:   EMfields = 43.6422 MB, particles = 512 MB, comm = 51.2 MB, field buf = 7.40845 MB
-        TOTAL = 614.251 MB (0.599854 GB)
-DEVICE: particles = 716.8 MB, buffers = 195.2 MB, moments = 13.0844 MB, field = 7.40845 MB, sort = 136.199 MB
-        TOTAL = 1068.69 MB (1.04364 GB)  (+ 500 MB CUDA context)
-COMBINED = 1682.94 MB (1.6435 GB)
+Local grid (with ghosts): 34x66x66 cells, 35x67x67 nodes
+HOST:   EMfields = 160.517 MB, particles = 2048 MB, comm = 204.8 MB, field buf = 27.5295 MB
+        TOTAL = 2440.85 MB (2.38364 GB)
+DEVICE: particles = 2867.2 MB, buffers = 780.8 MB, moments = 47.9477 MB, field = 27.5295 MB, sort = 544.38 MB
+        TOTAL = 4267.86 MB (4.16783 GB)  (+ 500 MB CUDA context)
+COMBINED = 6708.7 MB (6.55147 GB)
 ---------------------
 ------------------------------------------
 Initialize GEM Challenge with Perturbation
@@ -131,832 +135,960 @@ rho species 1 = 1 DRIFTING
 rho species 2 = 0.1 BACKGROUND 
 rho species 3 = 0.1 BACKGROUND 
 -------------------------
-(2.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(2.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(3.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(3.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(7.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(7.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(5.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(5.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(6.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(6.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(4.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(4.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(1.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(1.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
-(0.0) WARNING init(), IOManager.cpp:138: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
-(0.0) WARNING init(), IOManager.cpp:144: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(1.0) WARNING init(), IOManager.cpp:136: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(1.0) WARNING init(), IOManager.cpp:142: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
+(0.0) WARNING init(), IOManager.cpp:136: Selected particle backend requires HDF5 (compile with USE_HDF5=ON). Particle output disabled.
+(0.0) WARNING init(), IOManager.cpp:142: Selected restart backend requires HDF5 (compile with USE_HDF5=ON). Restart output disabled.
 CUDA Init finished
  ======= Cycle 0 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.140958 norm b vector (source) = 0.140956
-GMRES converged at restart # 1; iteration #3 with error: 3.55945e-07
+==PROF== Profiling "k_batchUnpack2D" - 0 (1/50): ==PROF== Profiling "k_batchUnpack2D" - 0 (1/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchUnpack2D" - 1 (2/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchUnpack2D" - 1 (2/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyEdgeZ" - 2 (3/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyEdgeZ" - 2 (3/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyCornerZ" - 3 (4/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyCornerZ" - 3 (4/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 4 (5/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 4 (5/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 5 (6/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 5 (6/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 6 (7/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 6 (7/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 7 (8/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 7 (8/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 8 (9/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 8 (9/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 9 (10/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 9 (10/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 10 (11/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 10 (11/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 11 (12/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 11 (12/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 12 (13/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 12 (13/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 13 (14/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 13 (14/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 14 (15/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 14 (15/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 15 (16/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 15 (16/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 16 (17/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 16 (17/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 17 (18/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 17 (18/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 18 (19/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 18 (19/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 19 (20/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 19 (20/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 20 (21/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 20 (21/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 21 (22/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 21 (22/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 22 (23/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 22 (23/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 23 (24/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 23 (24/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 24 (25/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divC2N_boundary" - 24 (25/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_neg3" - 25 (26/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_neg3" - 25 (26/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 26 (27/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 26 (27/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 27 (28/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 27 (28/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 28 (29/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 28 (29/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 29 (30/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_MUdotSpecies" - 29 (30/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divN2C" - 30 (31/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_divN2C" - 30 (31/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchPack2D" - 31 (32/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchPack2D" - 31 (32/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchPack2D" - 32 (33/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchPack2D" - 32 (33/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradC2N_interior" - 33 (34/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradC2N_interior" - 33 (34/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyFaceZ" - 34 (35/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyFaceZ" - 34 (35/50): 0%....50%....100% - 51 passes
+0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchUnpack2D" - 35 (36/50): ==PROF== Profiling "k_batchUnpack2D" - 35 (36/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchUnpack2D" - 36 (37/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_batchUnpack2D" - 36 (37/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyEdgeZ" - 37 (38/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyEdgeZ" - 37 (38/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyCornerZ" - 38 (39/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBatchSelfCopyCornerZ" - 38 (39/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 39 (40/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYleft" - 39 (40/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 40 (41/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "gpuBCfaceYright" - 40 (41/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradC2N_boundary" - 41 (42/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradC2N_boundary" - 41 (42/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_sub3" - 42 (43/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_sub3" - 42 (43/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_scale3" - 43 (44/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_scale3" - 43 (44/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_sumAddTwo3" - 44 (45/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_sumAddTwo3" - 44 (45/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_perfectConductorLeftY" - 45 (46/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_perfectConductorLeftY" - 45 (46/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_perfectConductorRightY" - 46 (47/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_perfectConductorRightY" - 46 (47/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_phys2solver3" - 47 (48/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_phys2solver3" - 47 (48/50): 0%....50%....100% - 51 passes
+0%....50%....100% - 51 passes
+Initial residual: 0.120757 norm b vector (source) = 0.120755
+==PROF== Profiling "k_solver2phys3" - 48 (49/50): ==PROF== Profiling "k_solver2phys3" - 48 (49/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradN2C" - 49 (50/50): 0%....50%....100% - 51 passes
+==PROF== Profiling "k_gradN2C" - 49 (50/50): 0%....50%....100% - 51 passes
+0%....50%....100% - 51 passes
+GMRES converged at restart # 1; iteration #3 with error: 3.48652e-07
   [Cycle 0] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 501.101 ms  [sort=1.82734 field=22.8078 da_wait=0.003707 mover+out=458.502 exchange+sort+moments=2.68595 B=11.2642 momentsAwait=4.00798 outCopy=0.002485]
+Execution time cycle: 439612 ms  [sort=14.2058 field=436636 da_wait=0.00874 mover+out=2920.27 exchange+sort+moments=10.8235 B=22.692 momentsAwait=8.12269 outCopy=0.00267]
  ======= Cycle 1 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0262074 norm b vector (source) = 0.188274
-GMRES converged at restart # 2; iteration #0 with error: 5.8546e-07
+Initial residual: 0.0245259 norm b vector (source) = 0.16394
+GMRES converged at restart # 2; iteration #0 with error: 5.60271e-07
   [Cycle 1] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 36.991 ms  [sort=0.032022 field=18.4355 da_wait=0.00015 mover+out=2.51756 exchange+sort+moments=4.31384 B=7.73795 momentsAwait=3.95331 outCopy=0.000632]
+Execution time cycle: 88.7735 ms  [sort=0.02378 field=35.0614 da_wait=0.00038 mover+out=0.0498 exchange+sort+moments=20.6191 B=25.2589 momentsAwait=7.75908 outCopy=0.00111]
  ======= Cycle 2 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0437897 norm b vector (source) = 0.097594
-GMRES converged at restart # 2; iteration #0 with error: 8.59173e-07
+Initial residual: 0.0388173 norm b vector (source) = 0.0885752
+GMRES converged at restart # 2; iteration #0 with error: 7.96003e-07
   [Cycle 2] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.8178 ms  [sort=0.031351 field=19.3141 da_wait=0.00014 mover+out=2.60413 exchange+sort+moments=5.39982 B=7.54441 momentsAwait=3.92313 outCopy=0.000691]
+Execution time cycle: 89.6085 ms  [sort=0.026501 field=36.6419 da_wait=0.00037 mover+out=0.04495 exchange+sort+moments=20.7371 B=24.1997 momentsAwait=7.95619 outCopy=0.00174]
  ======= Cycle 3 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0285147 norm b vector (source) = 0.0534193
-GMRES converged at restart # 2; iteration #0 with error: 5.4345e-07
+Initial residual: 0.0260665 norm b vector (source) = 0.0522221
+GMRES converged at restart # 2; iteration #0 with error: 5.02098e-07
   [Cycle 3] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.1019 ms  [sort=0.028185 field=19.318 da_wait=0.00015 mover+out=2.58703 exchange+sort+moments=5.38899 B=7.86799 momentsAwait=3.91096 outCopy=0.000661]
+Execution time cycle: 76.8272 ms  [sort=0.04168 field=36.0426 da_wait=0.00035 mover+out=0.048391 exchange+sort+moments=15.7072 B=17.1519 momentsAwait=7.83288 outCopy=0.00222]
  ======= Cycle 4 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195342 norm b vector (source) = 0.0481296
-GMRES converged at restart # 2; iteration #0 with error: 5.84584e-07
+Initial residual: 0.018856 norm b vector (source) = 0.0459788
+GMRES converged at restart # 2; iteration #0 with error: 5.86628e-07
   [Cycle 4] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 44.9892 ms  [sort=0.028325 field=19.4063 da_wait=0.00014 mover+out=2.6062 exchange+sort+moments=10.1662 B=8.83662 momentsAwait=3.9448 outCopy=0.000611]
+Execution time cycle: 77.2795 ms  [sort=0.05259 field=36.378 da_wait=0.00036 mover+out=0.04724 exchange+sort+moments=15.4776 B=17.3936 momentsAwait=7.92861 outCopy=0.00142]
  ======= Cycle 5 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0197676 norm b vector (source) = 0.0392788
-GMRES converged at restart # 2; iteration #0 with error: 7.67411e-07
+Initial residual: 0.0187948 norm b vector (source) = 0.0384095
+GMRES converged at restart # 2; iteration #0 with error: 7.82011e-07
   [Cycle 5] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.5889 ms  [sort=0.028335 field=20.3123 da_wait=0.00015 mover+out=2.59425 exchange+sort+moments=3.6216 B=9.07355 momentsAwait=3.95806 outCopy=0.000582]
+Execution time cycle: 77.0315 ms  [sort=0.047151 field=38.2036 da_wait=0.00025 mover+out=0.048651 exchange+sort+moments=14.8439 B=16.0712 momentsAwait=7.81512 outCopy=0.00159]
  ======= Cycle 6 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0159303 norm b vector (source) = 0.0443435
-GMRES converged at restart # 2; iteration #1 with error: 1.86187e-07
+Initial residual: 0.0152427 norm b vector (source) = 0.043577
+GMRES converged at restart # 2; iteration #1 with error: 1.89751e-07
   [Cycle 6] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 40.1546 ms  [sort=0.028174 field=21.3191 da_wait=0.00018 mover+out=2.59788 exchange+sort+moments=3.39079 B=8.89051 momentsAwait=3.92722 outCopy=0.000721]
+Execution time cycle: 78.688 ms  [sort=0.042641 field=39.8078 da_wait=0.00038 mover+out=0.044551 exchange+sort+moments=14.8126 B=16.0888 momentsAwait=7.88989 outCopy=0.00134]
  ======= Cycle 7 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0155631 norm b vector (source) = 0.0475826
-GMRES converged at restart # 2; iteration #1 with error: 2.34345e-07
+Initial residual: 0.0148331 norm b vector (source) = 0.0466478
+GMRES converged at restart # 2; iteration #1 with error: 2.33622e-07
   [Cycle 7] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 40.117 ms  [sort=0.027864 field=21.2537 da_wait=0.00014 mover+out=2.60052 exchange+sort+moments=3.40684 B=8.90716 momentsAwait=3.92021 outCopy=0.000621]
+Execution time cycle: 78.4952 ms  [sort=0.03366 field=39.6586 da_wait=0.00015 mover+out=0.046681 exchange+sort+moments=14.7969 B=16.1016 momentsAwait=7.8564 outCopy=0.00135]
  ======= Cycle 8 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0160338 norm b vector (source) = 0.046238
-GMRES converged at restart # 2; iteration #1 with error: 2.4853e-07
+Initial residual: 0.015264 norm b vector (source) = 0.045246
+GMRES converged at restart # 2; iteration #1 with error: 2.39825e-07
   [Cycle 8] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 40.1741 ms  [sort=0.028536 field=21.3143 da_wait=0.00014 mover+out=2.51582 exchange+sort+moments=3.44043 B=8.95815 momentsAwait=3.91618 outCopy=0.000611]
+Execution time cycle: 78.3235 ms  [sort=0.039511 field=39.4983 da_wait=0.00022 mover+out=0.044471 exchange+sort+moments=14.7865 B=16.1018 momentsAwait=7.85163 outCopy=0.00111]
  ======= Cycle 9 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0158008 norm b vector (source) = 0.043895
-GMRES converged at restart # 2; iteration #1 with error: 2.17385e-07
+Initial residual: 0.014975 norm b vector (source) = 0.0428089
+GMRES converged at restart # 2; iteration #1 with error: 2.09066e-07
   [Cycle 9] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 40.1117 ms  [sort=0.028064 field=21.2798 da_wait=0.00013 mover+out=2.59151 exchange+sort+moments=3.34093 B=8.94759 momentsAwait=3.92312 outCopy=0.000611]
+Execution time cycle: 78.5106 ms  [sort=0.041791 field=39.5552 da_wait=0.00024 mover+out=0.045911 exchange+sort+moments=14.788 B=16.1025 momentsAwait=7.97548 outCopy=0.0014]
  ======= Cycle 10 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0156336 norm b vector (source) = 0.0410873
-GMRES converged at restart # 2; iteration #1 with error: 1.61368e-07
+Initial residual: 0.014692 norm b vector (source) = 0.0398989
+GMRES converged at restart # 2; iteration #0 with error: 9.71255e-07
   [Cycle 10] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 40.0185 ms  [sort=0.027804 field=21.2391 da_wait=0.00012 mover+out=2.58045 exchange+sort+moments=3.31257 B=8.9619 momentsAwait=3.89591 outCopy=0.000631]
+Execution time cycle: 76.7319 ms  [sort=0.03627 field=37.9501 da_wait=0.00038 mover+out=0.04938 exchange+sort+moments=14.7621 B=16.0555 momentsAwait=7.87709 outCopy=0.00111]
  ======= Cycle 11 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0155342 norm b vector (source) = 0.0379902
-GMRES converged at restart # 2; iteration #0 with error: 6.46164e-07
+Initial residual: 0.0145218 norm b vector (source) = 0.0366738
+GMRES converged at restart # 2; iteration #0 with error: 6.26525e-07
   [Cycle 11] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.1005 ms  [sort=0.027744 field=20.3413 da_wait=0.00014 mover+out=2.56745 exchange+sort+moments=3.2962 B=8.98605 momentsAwait=3.88106 outCopy=0.000621]
+Execution time cycle: 76.8481 ms  [sort=0.04204 field=37.9935 da_wait=0.00017 mover+out=0.04469 exchange+sort+moments=14.7101 B=16.1351 momentsAwait=7.92134 outCopy=0.00117]
  ======= Cycle 12 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0155231 norm b vector (source) = 0.0351755
-GMRES converged at restart # 2; iteration #0 with error: 5.40536e-07
+Initial residual: 0.0144613 norm b vector (source) = 0.0337467
+GMRES converged at restart # 2; iteration #0 with error: 5.16681e-07
   [Cycle 12] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.2593 ms  [sort=0.027794 field=19.5226 da_wait=0.000171 mover+out=2.52048 exchange+sort+moments=3.3207 B=8.96299 momentsAwait=3.90394 outCopy=0.000611]
+Execution time cycle: 75.1265 ms  [sort=0.03369 field=36.129 da_wait=0.00034 mover+out=0.049301 exchange+sort+moments=14.7455 B=16.1127 momentsAwait=8.05454 outCopy=0.00146]
  ======= Cycle 13 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0155446 norm b vector (source) = 0.0331173
-GMRES converged at restart # 2; iteration #0 with error: 4.10685e-07
+Initial residual: 0.0144574 norm b vector (source) = 0.0316437
+GMRES converged at restart # 2; iteration #0 with error: 3.71236e-07
   [Cycle 13] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.1883 ms  [sort=0.027714 field=19.4176 da_wait=0.000141 mover+out=2.5751 exchange+sort+moments=3.24414 B=9.00149 momentsAwait=3.92149 outCopy=0.000631]
+Execution time cycle: 75.2088 ms  [sort=0.03098 field=36.4401 da_wait=0.00016 mover+out=0.04475 exchange+sort+moments=14.7169 B=16.1635 momentsAwait=7.81129 outCopy=0.00107]
  ======= Cycle 14 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.015522 norm b vector (source) = 0.0319316
-GMRES converged at restart # 2; iteration #0 with error: 3.61384e-07
+Initial residual: 0.0144129 norm b vector (source) = 0.0304497
+GMRES converged at restart # 2; iteration #0 with error: 3.29563e-07
   [Cycle 14] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.2814 ms  [sort=0.027674 field=19.4246 da_wait=0.00017 mover+out=2.57908 exchange+sort+moments=3.38797 B=8.99886 momentsAwait=3.86241 outCopy=0.000621]
+Execution time cycle: 75.0973 ms  [sort=0.029871 field=36.243 da_wait=0.00015 mover+out=0.04503 exchange+sort+moments=14.7615 B=16.0622 momentsAwait=7.95421 outCopy=0.00136]
  ======= Cycle 15 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.015465 norm b vector (source) = 0.0313421
-GMRES converged at restart # 2; iteration #0 with error: 3.39155e-07
+Initial residual: 0.014339 norm b vector (source) = 0.0298579
+GMRES converged at restart # 2; iteration #0 with error: 3.31515e-07
   [Cycle 15] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.1529 ms  [sort=0.028605 field=19.3622 da_wait=0.000151 mover+out=2.59652 exchange+sort+moments=3.26929 B=8.99218 momentsAwait=3.90324 outCopy=0.000641]
+Execution time cycle: 74.9342 ms  [sort=0.03295 field=36.1678 da_wait=0.00034 mover+out=0.051331 exchange+sort+moments=14.7172 B=16.0974 momentsAwait=7.86637 outCopy=0.00087]
  ======= Cycle 16 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0153828 norm b vector (source) = 0.0310224
-GMRES converged at restart # 2; iteration #0 with error: 3.56784e-07
+Initial residual: 0.0142688 norm b vector (source) = 0.0295494
+GMRES converged at restart # 2; iteration #0 with error: 3.59654e-07
   [Cycle 16] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.5175 ms  [sort=0.027693 field=19.3906 da_wait=0.000151 mover+out=2.58208 exchange+sort+moments=3.27116 B=8.96711 momentsAwait=4.27807 outCopy=0.000651]
+Execution time cycle: 75.1918 ms  [sort=0.033421 field=36.3958 da_wait=0.00027 mover+out=0.050251 exchange+sort+moments=14.7033 B=16.086 momentsAwait=7.92196 outCopy=0.00079]
  ======= Cycle 17 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0152784 norm b vector (source) = 0.0308386
-GMRES converged at restart # 2; iteration #0 with error: 4.42966e-07
+Initial residual: 0.0141796 norm b vector (source) = 0.0293903
+GMRES converged at restart # 2; iteration #0 with error: 4.69759e-07
   [Cycle 17] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.6194 ms  [sort=0.029026 field=19.7631 da_wait=0.000111 mover+out=2.53884 exchange+sort+moments=3.28183 B=8.98274 momentsAwait=4.02309 outCopy=0.000641]
+Execution time cycle: 75.4919 ms  [sort=0.03728 field=36.4578 da_wait=0.00016 mover+out=0.047611 exchange+sort+moments=14.7004 B=16.2347 momentsAwait=8.01266 outCopy=0.00134]
  ======= Cycle 18 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.015149 norm b vector (source) = 0.0307945
-GMRES converged at restart # 2; iteration #0 with error: 6.1896e-07
+Initial residual: 0.0140656 norm b vector (source) = 0.0293907
+GMRES converged at restart # 2; iteration #0 with error: 5.13252e-07
   [Cycle 18] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.4353 ms  [sort=0.029578 field=19.6661 da_wait=0.00013 mover+out=2.57064 exchange+sort+moments=3.25917 B=8.96102 momentsAwait=3.948 outCopy=0.000661]
+Execution time cycle: 76.7006 ms  [sort=0.037571 field=37.9717 da_wait=0.00035 mover+out=0.045601 exchange+sort+moments=14.7578 B=16.1024 momentsAwait=7.7841 outCopy=0.00104]
  ======= Cycle 19 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0149853 norm b vector (source) = 0.0309012
-GMRES converged at restart # 2; iteration #0 with error: 6.71882e-07
+Initial residual: 0.0139386 norm b vector (source) = 0.0295632
+GMRES converged at restart # 2; iteration #0 with error: 7.0199e-07
   [Cycle 19] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.424 ms  [sort=0.029667 field=20.6022 da_wait=0.00012 mover+out=2.57542 exchange+sort+moments=3.24526 B=8.94934 momentsAwait=4.02138 outCopy=0.000661]
+Execution time cycle: 76.2503 ms  [sort=0.02862 field=37.6612 da_wait=0.00026 mover+out=0.05306 exchange+sort+moments=14.7146 B=16.0874 momentsAwait=7.70421 outCopy=0.00099]
  ======= Cycle 20 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0148101 norm b vector (source) = 0.0311166
-GMRES converged at restart # 2; iteration #0 with error: 8.43957e-07
+Initial residual: 0.0138255 norm b vector (source) = 0.0298534
+GMRES converged at restart # 2; iteration #0 with error: 8.30411e-07
   [Cycle 20] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.4629 ms  [sort=0.029488 field=20.6452 da_wait=0.00012 mover+out=2.57047 exchange+sort+moments=3.22377 B=8.96233 momentsAwait=4.03082 outCopy=0.000641]
+Execution time cycle: 76.5296 ms  [sort=0.0321 field=37.8222 da_wait=0.00035 mover+out=0.046431 exchange+sort+moments=14.6898 B=16.1522 momentsAwait=7.78538 outCopy=0.00103]
  ======= Cycle 21 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0146458 norm b vector (source) = 0.0313306
-GMRES converged at restart # 2; iteration #0 with error: 9.09579e-07
+Initial residual: 0.0137362 norm b vector (source) = 0.0301415
+GMRES converged at restart # 2; iteration #0 with error: 8.47804e-07
   [Cycle 21] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.4854 ms  [sort=0.029608 field=20.6129 da_wait=0.00013 mover+out=2.56097 exchange+sort+moments=3.26044 B=8.99438 momentsAwait=4.02637 outCopy=0.000652]
+Execution time cycle: 76.286 ms  [sort=0.03142 field=37.553 da_wait=0.00028 mover+out=0.045851 exchange+sort+moments=14.6491 B=16.2377 momentsAwait=7.76769 outCopy=0.00103]
  ======= Cycle 22 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0145245 norm b vector (source) = 0.0314391
-GMRES converged at restart # 2; iteration #0 with error: 8.53596e-07
+Initial residual: 0.0136809 norm b vector (source) = 0.0303149
+GMRES converged at restart # 2; iteration #0 with error: 7.55068e-07
   [Cycle 22] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.4617 ms  [sort=0.028445 field=20.5832 da_wait=0.00014 mover+out=2.55837 exchange+sort+moments=3.23776 B=9.0618 momentsAwait=3.99132 outCopy=0.000661]
+Execution time cycle: 76.0755 ms  [sort=0.028261 field=37.4475 da_wait=0.00028 mover+out=0.04457 exchange+sort+moments=14.6927 B=16.1344 momentsAwait=7.72675 outCopy=0.00099]
  ======= Cycle 23 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0144569 norm b vector (source) = 0.031386
-GMRES converged at restart # 2; iteration #0 with error: 7.12379e-07
+Initial residual: 0.0136643 norm b vector (source) = 0.0303136
+GMRES converged at restart # 2; iteration #0 with error: 5.98295e-07
   [Cycle 23] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.3651 ms  [sort=0.03089 field=20.5909 da_wait=0.00011 mover+out=2.56604 exchange+sort+moments=3.24667 B=8.95889 momentsAwait=3.97092 outCopy=0.000651]
+Execution time cycle: 76.1595 ms  [sort=0.027841 field=37.5464 da_wait=0.00027 mover+out=0.04747 exchange+sort+moments=14.6288 B=16.1892 momentsAwait=7.71855 outCopy=0.00091]
  ======= Cycle 24 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0144427 norm b vector (source) = 0.0311734
-GMRES converged at restart # 2; iteration #0 with error: 5.46268e-07
+Initial residual: 0.0136886 norm b vector (source) = 0.0301476
+GMRES converged at restart # 2; iteration #0 with error: 5.92886e-07
   [Cycle 24] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.4476 ms  [sort=0.029336 field=20.5839 da_wait=0.000121 mover+out=2.56314 exchange+sort+moments=3.2478 B=8.96934 momentsAwait=4.05332 outCopy=0.000662]
+Execution time cycle: 74.5458 ms  [sort=0.02985 field=35.8819 da_wait=0.00015 mover+out=0.043171 exchange+sort+moments=14.6616 B=16.1939 momentsAwait=7.73403 outCopy=0.0011]
  ======= Cycle 25 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0144815 norm b vector (source) = 0.0308588
-GMRES converged at restart # 2; iteration #0 with error: 5.33002e-07
+Initial residual: 0.0137522 norm b vector (source) = 0.0298802
+GMRES converged at restart # 2; iteration #0 with error: 4.65163e-07
   [Cycle 25] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.047 ms  [sort=0.028826 field=20.1857 da_wait=0.00011 mover+out=2.56646 exchange+sort+moments=3.21137 B=8.98013 momentsAwait=4.07377 outCopy=0.000601]
+Execution time cycle: 74.6908 ms  [sort=0.029651 field=35.9695 da_wait=0.00015 mover+out=0.04646 exchange+sort+moments=14.6644 B=16.143 momentsAwait=7.83652 outCopy=0.00103]
  ======= Cycle 26 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0145657 norm b vector (source) = 0.0305242
-GMRES converged at restart # 2; iteration #0 with error: 4.31224e-07
+Initial residual: 0.0138489 norm b vector (source) = 0.0295859
+GMRES converged at restart # 2; iteration #0 with error: 4.0917e-07
   [Cycle 26] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.397 ms  [sort=0.029838 field=19.589 da_wait=0.00014 mover+out=2.55956 exchange+sort+moments=3.2014 B=8.96062 momentsAwait=4.05582 outCopy=0.000641]
+Execution time cycle: 74.6163 ms  [sort=0.02909 field=35.7973 da_wait=0.00014 mover+out=0.04854 exchange+sort+moments=14.6669 B=16.3161 momentsAwait=7.75751 outCopy=0.00077]
  ======= Cycle 27 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0146707 norm b vector (source) = 0.0302297
-GMRES converged at restart # 2; iteration #0 with error: 4.0786e-07
+Initial residual: 0.0139679 norm b vector (source) = 0.0293287
+GMRES converged at restart # 2; iteration #0 with error: 4.07039e-07
   [Cycle 27] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.4998 ms  [sort=0.029478 field=19.5495 da_wait=0.00014 mover+out=2.58683 exchange+sort+moments=3.25489 B=8.98974 momentsAwait=4.08857 outCopy=0.000631]
+Execution time cycle: 74.714 ms  [sort=0.028521 field=36.0087 da_wait=0.00015 mover+out=0.044561 exchange+sort+moments=14.6636 B=16.1481 momentsAwait=7.8196 outCopy=0.00083]
  ======= Cycle 28 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0147903 norm b vector (source) = 0.0300112
-GMRES converged at restart # 2; iteration #0 with error: 4.13422e-07
+Initial residual: 0.0140886 norm b vector (source) = 0.0291368
+GMRES converged at restart # 2; iteration #0 with error: 4.18647e-07
   [Cycle 28] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.538 ms  [sort=0.029999 field=19.626 da_wait=0.00012 mover+out=2.56191 exchange+sort+moments=3.22458 B=9.01223 momentsAwait=4.08249 outCopy=0.000641]
+Execution time cycle: 74.8194 ms  [sort=0.02846 field=35.9113 da_wait=0.00016 mover+out=0.04568 exchange+sort+moments=14.6356 B=16.1559 momentsAwait=8.04119 outCopy=0.00116]
  ======= Cycle 29 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0149257 norm b vector (source) = 0.0298922
-GMRES converged at restart # 2; iteration #0 with error: 4.16537e-07
+Initial residual: 0.0142094 norm b vector (source) = 0.0290191
+GMRES converged at restart # 2; iteration #0 with error: 4.24678e-07
   [Cycle 29] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.474 ms  [sort=0.028977 field=19.627 da_wait=0.00012 mover+out=2.56683 exchange+sort+moments=3.23259 B=9.0085 momentsAwait=4.0093 outCopy=0.000591]
+Execution time cycle: 74.9154 ms  [sort=0.02755 field=36.0245 da_wait=0.00016 mover+out=0.04608 exchange+sort+moments=14.7135 B=16.1997 momentsAwait=7.90284 outCopy=0.00104]
  ======= Cycle 30 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0150798 norm b vector (source) = 0.0298848
-GMRES converged at restart # 2; iteration #0 with error: 4.22947e-07
+Initial residual: 0.0143463 norm b vector (source) = 0.0289963
+GMRES converged at restart # 2; iteration #0 with error: 4.39464e-07
   [Cycle 30] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.5094 ms  [sort=0.029056 field=19.6516 da_wait=0.00011 mover+out=2.56414 exchange+sort+moments=3.27176 B=8.97636 momentsAwait=4.01573 outCopy=0.000641]
+Execution time cycle: 74.9583 ms  [sort=0.03134 field=36.1355 da_wait=0.00026 mover+out=0.045181 exchange+sort+moments=14.7227 B=16.1235 momentsAwait=7.89881 outCopy=0.00097]
  ======= Cycle 31 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0152464 norm b vector (source) = 0.0299825
-GMRES converged at restart # 2; iteration #0 with error: 4.49725e-07
+Initial residual: 0.0144843 norm b vector (source) = 0.0290688
+GMRES converged at restart # 2; iteration #0 with error: 4.94835e-07
   [Cycle 31] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.5955 ms  [sort=0.031231 field=19.6124 da_wait=0.00013 mover+out=2.58782 exchange+sort+moments=3.33506 B=8.9847 momentsAwait=4.04355 outCopy=0.000602]
+Execution time cycle: 74.6767 ms  [sort=0.02922 field=35.8075 da_wait=0.00015 mover+out=0.043421 exchange+sort+moments=14.7141 B=16.2026 momentsAwait=7.87853 outCopy=0.00134]
  ======= Cycle 32 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0154324 norm b vector (source) = 0.0301785
-GMRES converged at restart # 2; iteration #0 with error: 5.00706e-07
+Initial residual: 0.0146404 norm b vector (source) = 0.0292383
+GMRES converged at restart # 2; iteration #0 with error: 5.82987e-07
   [Cycle 32] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.4033 ms  [sort=0.028766 field=19.6408 da_wait=0.00013 mover+out=2.55572 exchange+sort+moments=3.09322 B=9.02184 momentsAwait=4.06212 outCopy=0.000641]
+Execution time cycle: 76.2871 ms  [sort=0.030411 field=37.2466 da_wait=0.00016 mover+out=0.04772 exchange+sort+moments=14.689 B=16.3345 momentsAwait=7.93758 outCopy=0.0011]
  ======= Cycle 33 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0156192 norm b vector (source) = 0.0304253
-GMRES converged at restart # 2; iteration #0 with error: 5.67997e-07
+Initial residual: 0.0148065 norm b vector (source) = 0.0294684
+GMRES converged at restart # 2; iteration #0 with error: 6.67862e-07
   [Cycle 33] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.8887 ms  [sort=0.031741 field=19.6078 da_wait=0.00013 mover+out=2.51377 exchange+sort+moments=2.68502 B=8.98678 momentsAwait=4.06286 outCopy=0.000622]
+Execution time cycle: 75.9891 ms  [sort=0.02934 field=37.3026 da_wait=0.00015 mover+out=0.05061 exchange+sort+moments=14.5076 B=16.2036 momentsAwait=7.89444 outCopy=0.00075]
  ======= Cycle 34 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0158056 norm b vector (source) = 0.0306707
-GMRES converged at restart # 2; iteration #0 with error: 6.40638e-07
+Initial residual: 0.0149708 norm b vector (source) = 0.0297042
+GMRES converged at restart # 2; iteration #0 with error: 5.71328e-07
   [Cycle 34] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 38.1191 ms  [sort=0.029196 field=19.6479 da_wait=0.00011 mover+out=2.52 exchange+sort+moments=2.8632 B=9.01083 momentsAwait=4.04715 outCopy=0.000652]
+Execution time cycle: 77.7417 ms  [sort=0.02388 field=39.0511 da_wait=0.00015 mover+out=0.04638 exchange+sort+moments=14.5466 B=16.1108 momentsAwait=7.96185 outCopy=0.00085]
  ======= Cycle 35 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0159752 norm b vector (source) = 0.0309025
-GMRES converged at restart # 2; iteration #0 with error: 5.40753e-07
+Initial residual: 0.0151338 norm b vector (source) = 0.0299376
+GMRES converged at restart # 2; iteration #0 with error: 6.08798e-07
   [Cycle 35] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.5965 ms  [sort=0.029547 field=20.5605 da_wait=0.00011 mover+out=2.56567 exchange+sort+moments=3.32843 B=9.03152 momentsAwait=4.08007 outCopy=0.000642]
+Execution time cycle: 77.7243 ms  [sort=0.02675 field=38.9705 da_wait=0.00015 mover+out=0.04656 exchange+sort+moments=14.687 B=16.146 momentsAwait=7.8465 outCopy=0.0009]
  ======= Cycle 36 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0161324 norm b vector (source) = 0.0311558
-GMRES converged at restart # 2; iteration #0 with error: 5.58009e-07
+Initial residual: 0.0152897 norm b vector (source) = 0.0301964
+GMRES converged at restart # 2; iteration #0 with error: 6.13189e-07
   [Cycle 36] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.4904 ms  [sort=0.030449 field=20.5745 da_wait=0.00012 mover+out=2.5778 exchange+sort+moments=3.32088 B=8.97832 momentsAwait=4.00768 outCopy=0.000642]
+Execution time cycle: 77.8196 ms  [sort=0.02889 field=38.8805 da_wait=0.00028 mover+out=0.04423 exchange+sort+moments=14.7626 B=16.1658 momentsAwait=7.9358 outCopy=0.00152]
  ======= Cycle 37 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.016285 norm b vector (source) = 0.031437
-GMRES converged at restart # 2; iteration #0 with error: 5.59908e-07
+Initial residual: 0.0154552 norm b vector (source) = 0.0304879
+GMRES converged at restart # 2; iteration #0 with error: 5.72778e-07
   [Cycle 37] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.2916 ms  [sort=0.029377 field=20.5093 da_wait=0.000151 mover+out=2.57635 exchange+sort+moments=3.26095 B=8.94323 momentsAwait=3.97161 outCopy=0.000691]
+Execution time cycle: 77.8494 ms  [sort=0.03835 field=38.9686 da_wait=0.00015 mover+out=0.04999 exchange+sort+moments=14.6987 B=16.2189 momentsAwait=7.87358 outCopy=0.00112]
  ======= Cycle 38 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0164406 norm b vector (source) = 0.031706
-GMRES converged at restart # 2; iteration #0 with error: 5.47242e-07
+Initial residual: 0.0156257 norm b vector (source) = 0.0307582
+GMRES converged at restart # 2; iteration #0 with error: 6.6879e-07
   [Cycle 38] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.9954 ms  [sort=0.029107 field=21.1071 da_wait=0.00011 mover+out=2.55742 exchange+sort+moments=3.21452 B=8.9937 momentsAwait=4.09278 outCopy=0.000651]
+Execution time cycle: 76.0129 ms  [sort=0.02875 field=37.0869 da_wait=0.00015 mover+out=0.05292 exchange+sort+moments=14.625 B=16.1763 momentsAwait=8.04191 outCopy=0.00091]
  ======= Cycle 39 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0165922 norm b vector (source) = 0.0319176
-GMRES converged at restart # 2; iteration #0 with error: 6.73596e-07
+Initial residual: 0.0157821 norm b vector (source) = 0.0309512
+GMRES converged at restart # 2; iteration #0 with error: 6.10182e-07
   [Cycle 39] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.2972 ms  [sort=0.029387 field=18.5122 da_wait=0.00014 mover+out=2.55527 exchange+sort+moments=3.23938 B=8.97864 momentsAwait=3.9815 outCopy=0.000661]
+Execution time cycle: 74.4634 ms  [sort=0.02856 field=35.6723 da_wait=0.00015 mover+out=0.045011 exchange+sort+moments=14.6354 B=16.1888 momentsAwait=7.8921 outCopy=0.00106]
  ======= Cycle 40 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0167265 norm b vector (source) = 0.03205
-GMRES converged at restart # 2; iteration #0 with error: 6.17095e-07
+Initial residual: 0.0158999 norm b vector (source) = 0.0310337
+GMRES converged at restart # 2; iteration #0 with error: 5.39486e-07
   [Cycle 40] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3957 ms  [sort=0.029277 field=18.5511 da_wait=0.000141 mover+out=2.55655 exchange+sort+moments=3.23502 B=8.99484 momentsAwait=4.02819 outCopy=0.000642]
+Execution time cycle: 74.1666 ms  [sort=0.02885 field=35.3653 da_wait=0.00023 mover+out=0.053571 exchange+sort+moments=14.7046 B=16.0908 momentsAwait=7.92207 outCopy=0.00129]
  ======= Cycle 41 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0168448 norm b vector (source) = 0.0321036
-GMRES converged at restart # 2; iteration #0 with error: 5.74914e-07
+Initial residual: 0.0160017 norm b vector (source) = 0.0310229
+GMRES converged at restart # 2; iteration #0 with error: 4.94236e-07
   [Cycle 41] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4959 ms  [sort=0.029778 field=18.5729 da_wait=0.00012 mover+out=2.57106 exchange+sort+moments=3.21469 B=9.04413 momentsAwait=4.06264 outCopy=0.000621]
+Execution time cycle: 73.9797 ms  [sort=0.02853 field=35.1998 da_wait=0.00015 mover+out=0.04432 exchange+sort+moments=14.6682 B=16.1345 momentsAwait=7.90326 outCopy=0.00091]
  ======= Cycle 42 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0169555 norm b vector (source) = 0.0320974
-GMRES converged at restart # 2; iteration #0 with error: 5.43731e-07
+Initial residual: 0.016102 norm b vector (source) = 0.0309573
+GMRES converged at restart # 2; iteration #0 with error: 4.65203e-07
   [Cycle 42] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3007 ms  [sort=0.028665 field=18.5719 da_wait=0.00013 mover+out=2.57443 exchange+sort+moments=3.20896 B=8.94105 momentsAwait=3.97495 outCopy=0.000621]
+Execution time cycle: 74.2483 ms  [sort=0.02767 field=35.4725 da_wait=0.00034 mover+out=0.04379 exchange+sort+moments=14.7199 B=16.0877 momentsAwait=7.8956 outCopy=0.00084]
  ======= Cycle 43 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0170556 norm b vector (source) = 0.0320547
-GMRES converged at restart # 2; iteration #0 with error: 5.26027e-07
+Initial residual: 0.0162109 norm b vector (source) = 0.030888
+GMRES converged at restart # 2; iteration #0 with error: 4.42335e-07
   [Cycle 43] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4144 ms  [sort=0.029818 field=18.6431 da_wait=0.00012 mover+out=2.55202 exchange+sort+moments=3.23072 B=8.96693 momentsAwait=3.99101 outCopy=0.000631]
+Execution time cycle: 74.443 ms  [sort=0.02723 field=35.4156 da_wait=0.00036 mover+out=0.04665 exchange+sort+moments=14.6675 B=16.3295 momentsAwait=7.95524 outCopy=0.00096]
  ======= Cycle 44 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0171583 norm b vector (source) = 0.032015
-GMRES converged at restart # 2; iteration #0 with error: 5.23536e-07
+Initial residual: 0.0163049 norm b vector (source) = 0.0308284
+GMRES converged at restart # 2; iteration #0 with error: 4.32051e-07
   [Cycle 44] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.418 ms  [sort=0.029197 field=18.6149 da_wait=0.00012 mover+out=2.55574 exchange+sort+moments=3.19401 B=8.98839 momentsAwait=4.03498 outCopy=0.000651]
+Execution time cycle: 74.2162 ms  [sort=0.02957 field=35.3255 da_wait=0.00026 mover+out=0.04607 exchange+sort+moments=14.6985 B=16.1033 momentsAwait=8.01204 outCopy=0.00097]
  ======= Cycle 45 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0172478 norm b vector (source) = 0.0319847
-GMRES converged at restart # 2; iteration #0 with error: 5.23541e-07
+Initial residual: 0.0163856 norm b vector (source) = 0.0307843
+GMRES converged at restart # 2; iteration #0 with error: 4.32867e-07
   [Cycle 45] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4539 ms  [sort=0.028706 field=18.6227 da_wait=0.00011 mover+out=2.56437 exchange+sort+moments=3.22346 B=8.97082 momentsAwait=4.043 outCopy=0.000661]
+Execution time cycle: 74.7897 ms  [sort=0.028601 field=35.9008 da_wait=0.00016 mover+out=0.045961 exchange+sort+moments=14.6572 B=16.1612 momentsAwait=7.99475 outCopy=0.001041]
  ======= Cycle 46 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0173237 norm b vector (source) = 0.0319503
-GMRES converged at restart # 2; iteration #0 with error: 5.1836e-07
+Initial residual: 0.0164623 norm b vector (source) = 0.0307576
+GMRES converged at restart # 2; iteration #0 with error: 4.31429e-07
   [Cycle 46] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3725 ms  [sort=0.028595 field=18.53 da_wait=0.00013 mover+out=2.55875 exchange+sort+moments=3.24232 B=8.96167 momentsAwait=4.05039 outCopy=0.000642]
+Execution time cycle: 74.174 ms  [sort=0.02845 field=35.253 da_wait=0.00027 mover+out=0.04739 exchange+sort+moments=14.65 B=16.2263 momentsAwait=7.96778 outCopy=0.00081]
  ======= Cycle 47 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0174058 norm b vector (source) = 0.0319164
-GMRES converged at restart # 2; iteration #0 with error: 5.31917e-07
+Initial residual: 0.0165332 norm b vector (source) = 0.0307376
+GMRES converged at restart # 2; iteration #0 with error: 4.56826e-07
   [Cycle 47] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3457 ms  [sort=0.029056 field=18.5616 da_wait=0.00011 mover+out=2.55915 exchange+sort+moments=3.18809 B=9.02435 momentsAwait=3.98273 outCopy=0.000642]
+Execution time cycle: 74.0478 ms  [sort=0.02793 field=35.3252 da_wait=0.00015 mover+out=0.04669 exchange+sort+moments=14.6581 B=16.1282 momentsAwait=7.86057 outCopy=0.00088]
  ======= Cycle 48 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0174759 norm b vector (source) = 0.0318742
-GMRES converged at restart # 2; iteration #0 with error: 5.53432e-07
+Initial residual: 0.0166 norm b vector (source) = 0.0307176
+GMRES converged at restart # 2; iteration #0 with error: 4.97392e-07
   [Cycle 48] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4371 ms  [sort=0.029306 field=18.5942 da_wait=0.00015 mover+out=2.55438 exchange+sort+moments=3.23071 B=8.99393 momentsAwait=4.03375 outCopy=0.000632]
+Execution time cycle: 73.8903 ms  [sort=0.03064 field=35.1329 da_wait=0.00015 mover+out=0.04542 exchange+sort+moments=14.6805 B=16.1025 momentsAwait=7.89706 outCopy=0.00108]
  ======= Cycle 49 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0175457 norm b vector (source) = 0.031832
-GMRES converged at restart # 2; iteration #0 with error: 5.54889e-07
+Initial residual: 0.0166682 norm b vector (source) = 0.0306978
+GMRES converged at restart # 2; iteration #0 with error: 5.20332e-07
   [Cycle 49] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4013 ms  [sort=0.028876 field=18.6039 da_wait=0.00013 mover+out=2.56613 exchange+sort+moments=3.20042 B=9.02077 momentsAwait=3.9804 outCopy=0.000642]
+Execution time cycle: 74.1474 ms  [sort=0.03067 field=35.3155 da_wait=0.00015 mover+out=0.04787 exchange+sort+moments=14.6828 B=16.1219 momentsAwait=7.94781 outCopy=0.00078]
  ======= Cycle 50 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.01763 norm b vector (source) = 0.0318115
-GMRES converged at restart # 2; iteration #0 with error: 5.59036e-07
+Initial residual: 0.0167368 norm b vector (source) = 0.0306771
+GMRES converged at restart # 2; iteration #0 with error: 5.45367e-07
   [Cycle 50] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 39.2189 ms  [sort=1.86269 field=18.7617 da_wait=0.000671 mover+out=2.52614 exchange+sort+moments=2.98237 B=9.03266 momentsAwait=4.05196 outCopy=0.000651]
+Execution time cycle: 82.0013 ms  [sort=7.43708 field=35.8365 da_wait=0.00122 mover+out=0.042711 exchange+sort+moments=14.5604 B=16.1336 momentsAwait=7.98883 outCopy=0.00092]
  ======= Cycle 51 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0177275 norm b vector (source) = 0.0318255
-GMRES converged at restart # 2; iteration #0 with error: 5.60003e-07
+Initial residual: 0.0168001 norm b vector (source) = 0.0306565
+GMRES converged at restart # 2; iteration #0 with error: 5.47231e-07
   [Cycle 51] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.595 ms  [sort=0.029617 field=18.6431 da_wait=0.000141 mover+out=2.56576 exchange+sort+moments=3.33007 B=9.03104 momentsAwait=3.99469 outCopy=0.000641]
+Execution time cycle: 74.3455 ms  [sort=0.03908 field=35.4524 da_wait=0.00015 mover+out=0.055211 exchange+sort+moments=14.7128 B=16.0734 momentsAwait=8.01139 outCopy=0.00102]
  ======= Cycle 52 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0178251 norm b vector (source) = 0.0318679
-GMRES converged at restart # 2; iteration #0 with error: 5.44247e-07
+Initial residual: 0.0168713 norm b vector (source) = 0.0306535
+GMRES converged at restart # 2; iteration #0 with error: 5.23671e-07
   [Cycle 52] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.9168 ms  [sort=0.029778 field=19.0785 da_wait=0.00011 mover+out=2.54474 exchange+sort+moments=3.2163 B=8.99292 momentsAwait=4.05388 outCopy=0.000611]
+Execution time cycle: 74.5254 ms  [sort=0.029431 field=35.7542 da_wait=0.00015 mover+out=0.04642 exchange+sort+moments=14.6514 B=16.0893 momentsAwait=7.95336 outCopy=0.00104]
  ======= Cycle 53 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0179196 norm b vector (source) = 0.0319282
-GMRES converged at restart # 2; iteration #0 with error: 5.50188e-07
+Initial residual: 0.0169367 norm b vector (source) = 0.0306644
+GMRES converged at restart # 2; iteration #0 with error: 5.18275e-07
   [Cycle 53] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3652 ms  [sort=0.029276 field=18.4433 da_wait=0.00011 mover+out=2.56953 exchange+sort+moments=3.24423 B=8.98871 momentsAwait=4.08943 outCopy=0.000631]
+Execution time cycle: 73.9694 ms  [sort=0.02901 field=35.2804 da_wait=0.00015 mover+out=0.04552 exchange+sort+moments=14.668 B=16.1113 momentsAwait=7.83416 outCopy=0.00085]
  ======= Cycle 54 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.017983 norm b vector (source) = 0.0319825
-GMRES converged at restart # 2; iteration #0 with error: 5.55656e-07
+Initial residual: 0.0170063 norm b vector (source) = 0.0306993
+GMRES converged at restart # 2; iteration #0 with error: 5.07465e-07
   [Cycle 54] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3396 ms  [sort=0.029528 field=18.5134 da_wait=0.00013 mover+out=2.55122 exchange+sort+moments=3.2315 B=8.97118 momentsAwait=4.042 outCopy=0.000631]
+Execution time cycle: 74.0785 ms  [sort=0.028311 field=35.3415 da_wait=0.00016 mover+out=0.048971 exchange+sort+moments=14.6575 B=16.1043 momentsAwait=7.89688 outCopy=0.0008]
  ======= Cycle 55 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.018037 norm b vector (source) = 0.0320361
-GMRES converged at restart # 2; iteration #0 with error: 5.30352e-07
+Initial residual: 0.0170701 norm b vector (source) = 0.0307507
+GMRES converged at restart # 2; iteration #0 with error: 4.77759e-07
   [Cycle 55] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.2744 ms  [sort=0.029166 field=18.4831 da_wait=0.00011 mover+out=2.5691 exchange+sort+moments=3.20142 B=8.99298 momentsAwait=3.99777 outCopy=0.000701]
+Execution time cycle: 74.146 ms  [sort=0.027901 field=35.3598 da_wait=0.00027 mover+out=0.04775 exchange+sort+moments=14.6646 B=16.1556 momentsAwait=7.88912 outCopy=0.0009]
  ======= Cycle 56 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0180843 norm b vector (source) = 0.0320882
-GMRES converged at restart # 2; iteration #0 with error: 5.0003e-07
+Initial residual: 0.0171174 norm b vector (source) = 0.0307998
+GMRES converged at restart # 2; iteration #0 with error: 4.64435e-07
   [Cycle 56] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.388 ms  [sort=0.028355 field=18.5227 da_wait=0.000121 mover+out=2.55676 exchange+sort+moments=3.22039 B=9.01644 momentsAwait=4.04258 outCopy=0.000621]
+Execution time cycle: 74.5165 ms  [sort=0.028131 field=35.755 da_wait=0.00015 mover+out=0.04946 exchange+sort+moments=14.6353 B=16.1361 momentsAwait=7.91129 outCopy=0.00093]
  ======= Cycle 57 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0181379 norm b vector (source) = 0.0321498
-GMRES converged at restart # 2; iteration #0 with error: 4.69968e-07
+Initial residual: 0.017157 norm b vector (source) = 0.0308433
+GMRES converged at restart # 2; iteration #0 with error: 4.61282e-07
   [Cycle 57] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4175 ms  [sort=0.028435 field=18.5794 da_wait=0.000121 mover+out=2.56303 exchange+sort+moments=3.22499 B=8.99171 momentsAwait=4.02915 outCopy=0.000652]
+Execution time cycle: 74.4817 ms  [sort=0.02838 field=35.6619 da_wait=0.00017 mover+out=0.045611 exchange+sort+moments=14.7219 B=16.1241 momentsAwait=7.89851 outCopy=0.00113]
  ======= Cycle 58 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0181828 norm b vector (source) = 0.0322127
-GMRES converged at restart # 2; iteration #0 with error: 4.46494e-07
+Initial residual: 0.0171847 norm b vector (source) = 0.0308735
+GMRES converged at restart # 2; iteration #0 with error: 4.56142e-07
   [Cycle 58] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4327 ms  [sort=0.029157 field=18.6106 da_wait=0.000151 mover+out=2.57937 exchange+sort+moments=3.2017 B=8.98048 momentsAwait=4.03061 outCopy=0.000631]
+Execution time cycle: 74.2791 ms  [sort=0.02864 field=35.4764 da_wait=0.00015 mover+out=0.05595 exchange+sort+moments=14.7237 B=16.0834 momentsAwait=7.90964 outCopy=0.00109]
  ======= Cycle 59 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0182155 norm b vector (source) = 0.032255
-GMRES converged at restart # 2; iteration #0 with error: 4.33372e-07
+Initial residual: 0.0172062 norm b vector (source) = 0.0308871
+GMRES converged at restart # 2; iteration #0 with error: 4.60693e-07
   [Cycle 59] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4511 ms  [sort=0.030199 field=18.6455 da_wait=0.00012 mover+out=2.56362 exchange+sort+moments=3.19304 B=9.00216 momentsAwait=4.01579 outCopy=0.000652]
+Execution time cycle: 74.3996 ms  [sort=0.025651 field=35.5515 da_wait=0.00015 mover+out=0.04906 exchange+sort+moments=14.6746 B=16.1202 momentsAwait=7.97728 outCopy=0.001151]
  ======= Cycle 60 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.018243 norm b vector (source) = 0.0322693
-GMRES converged at restart # 2; iteration #0 with error: 4.3834e-07
+Initial residual: 0.0172287 norm b vector (source) = 0.0308886
+GMRES converged at restart # 2; iteration #0 with error: 4.63082e-07
   [Cycle 60] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4491 ms  [sort=0.029537 field=18.6419 da_wait=0.00011 mover+out=2.54096 exchange+sort+moments=3.25121 B=8.97023 momentsAwait=4.01459 outCopy=0.000631]
+Execution time cycle: 74.5902 ms  [sort=0.03064 field=35.7577 da_wait=0.00034 mover+out=0.044871 exchange+sort+moments=14.6537 B=16.1937 momentsAwait=7.90834 outCopy=0.00094]
  ======= Cycle 61 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.018258 norm b vector (source) = 0.0322573
-GMRES converged at restart # 2; iteration #0 with error: 4.49194e-07
+Initial residual: 0.0172519 norm b vector (source) = 0.0308833
+GMRES converged at restart # 2; iteration #0 with error: 4.51829e-07
   [Cycle 61] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3505 ms  [sort=0.031742 field=18.6069 da_wait=0.00012 mover+out=2.55559 exchange+sort+moments=3.22078 B=8.94726 momentsAwait=3.98746 outCopy=0.000661]
+Execution time cycle: 74.2233 ms  [sort=0.02918 field=35.3365 da_wait=0.00016 mover+out=0.042761 exchange+sort+moments=14.62 B=16.1892 momentsAwait=8.00443 outCopy=0.00099]
  ======= Cycle 62 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0182759 norm b vector (source) = 0.0322287
-GMRES converged at restart # 2; iteration #0 with error: 4.55494e-07
+Initial residual: 0.0172857 norm b vector (source) = 0.0308772
+GMRES converged at restart # 2; iteration #0 with error: 4.35608e-07
   [Cycle 62] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3854 ms  [sort=0.028486 field=18.5531 da_wait=0.00011 mover+out=2.57251 exchange+sort+moments=3.21169 B=9.0057 momentsAwait=4.01311 outCopy=0.000651]
+Execution time cycle: 74.3317 ms  [sort=0.02727 field=35.4754 da_wait=0.00033 mover+out=0.045411 exchange+sort+moments=14.6488 B=16.216 momentsAwait=7.91772 outCopy=0.00076]
  ======= Cycle 63 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0183052 norm b vector (source) = 0.0321992
-GMRES converged at restart # 2; iteration #0 with error: 4.56398e-07
+Initial residual: 0.0173198 norm b vector (source) = 0.0308638
+GMRES converged at restart # 2; iteration #0 with error: 4.24643e-07
   [Cycle 63] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4489 ms  [sort=0.028576 field=18.5496 da_wait=0.00013 mover+out=2.57365 exchange+sort+moments=3.24189 B=8.98567 momentsAwait=4.06867 outCopy=0.000651]
+Execution time cycle: 74.2057 ms  [sort=0.027871 field=35.4739 da_wait=0.00034 mover+out=0.05047 exchange+sort+moments=14.6617 B=16.0937 momentsAwait=7.89687 outCopy=0.00081]
  ======= Cycle 64 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0183492 norm b vector (source) = 0.032181
-GMRES converged at restart # 2; iteration #0 with error: 4.58395e-07
+Initial residual: 0.0173687 norm b vector (source) = 0.0308592
+GMRES converged at restart # 2; iteration #0 with error: 4.12181e-07
   [Cycle 64] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4471 ms  [sort=0.029487 field=18.5369 da_wait=0.0001 mover+out=2.57242 exchange+sort+moments=3.2455 B=9.03002 momentsAwait=4.03205 outCopy=0.000642]
+Execution time cycle: 74.2084 ms  [sort=0.02966 field=35.2848 da_wait=0.00023 mover+out=0.051381 exchange+sort+moments=14.7152 B=16.2441 momentsAwait=7.88213 outCopy=0.0009]
  ======= Cycle 65 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0184013 norm b vector (source) = 0.0321749
-GMRES converged at restart # 2; iteration #0 with error: 4.67261e-07
+Initial residual: 0.0174271 norm b vector (source) = 0.0308681
+GMRES converged at restart # 2; iteration #0 with error: 4.08899e-07
   [Cycle 65] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.5879 ms  [sort=0.029277 field=18.5401 da_wait=0.00012 mover+out=2.57387 exchange+sort+moments=3.29774 B=9.14287 momentsAwait=4.00328 outCopy=0.000632]
+Execution time cycle: 74.0619 ms  [sort=0.029051 field=35.3174 da_wait=0.00023 mover+out=0.051251 exchange+sort+moments=14.72 B=16.0874 momentsAwait=7.85544 outCopy=0.00103]
  ======= Cycle 66 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0184573 norm b vector (source) = 0.0321793
-GMRES converged at restart # 2; iteration #0 with error: 4.71073e-07
+Initial residual: 0.0174857 norm b vector (source) = 0.0308849
+GMRES converged at restart # 2; iteration #0 with error: 4.11713e-07
   [Cycle 66] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.5501 ms  [sort=0.029237 field=19.0239 da_wait=0.00013 mover+out=2.53879 exchange+sort+moments=2.92419 B=8.99016 momentsAwait=4.04297 outCopy=0.000651]
+Execution time cycle: 74.1631 ms  [sort=0.02786 field=35.4677 da_wait=0.00034 mover+out=0.04997 exchange+sort+moments=14.5595 B=16.1125 momentsAwait=7.94413 outCopy=0.00116]
  ======= Cycle 67 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0185203 norm b vector (source) = 0.032191
-GMRES converged at restart # 2; iteration #0 with error: 4.60965e-07
+Initial residual: 0.0175367 norm b vector (source) = 0.0308974
+GMRES converged at restart # 2; iteration #0 with error: 4.17231e-07
   [Cycle 67] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 36.7567 ms  [sort=0.030238 field=18.4558 da_wait=0.0001 mover+out=2.51853 exchange+sort+moments=2.74614 B=9.00156 momentsAwait=4.00363 outCopy=0.000622]
+Execution time cycle: 74.1446 ms  [sort=0.02593 field=35.4559 da_wait=0.00027 mover+out=0.04399 exchange+sort+moments=14.5524 B=16.178 momentsAwait=7.88676 outCopy=0.0013]
  ======= Cycle 68 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0185926 norm b vector (source) = 0.0322061
-GMRES converged at restart # 2; iteration #0 with error: 4.4959e-07
+Initial residual: 0.0176051 norm b vector (source) = 0.0309119
+GMRES converged at restart # 2; iteration #0 with error: 4.18332e-07
   [Cycle 68] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.1326 ms  [sort=0.029016 field=18.4976 da_wait=0.00016 mover+out=2.54592 exchange+sort+moments=2.98927 B=9.07263 momentsAwait=3.99743 outCopy=0.000631]
+Execution time cycle: 74.2764 ms  [sort=0.02558 field=35.4362 da_wait=0.00034 mover+out=0.046701 exchange+sort+moments=14.5935 B=16.233 momentsAwait=7.93992 outCopy=0.00113]
  ======= Cycle 69 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0186774 norm b vector (source) = 0.0322402
-GMRES converged at restart # 2; iteration #0 with error: 4.45423e-07
+Initial residual: 0.0176918 norm b vector (source) = 0.0309395
+GMRES converged at restart # 2; iteration #0 with error: 4.24149e-07
   [Cycle 69] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.5195 ms  [sort=0.029527 field=18.555 da_wait=0.00012 mover+out=2.5636 exchange+sort+moments=3.28553 B=9.01877 momentsAwait=4.0663 outCopy=0.000631]
+Execution time cycle: 74.5558 ms  [sort=0.02682 field=35.604 da_wait=0.00026 mover+out=0.055921 exchange+sort+moments=14.7012 B=16.222 momentsAwait=7.94421 outCopy=0.00129]
  ======= Cycle 70 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0187509 norm b vector (source) = 0.0322947
-GMRES converged at restart # 2; iteration #0 with error: 4.36127e-07
+Initial residual: 0.0177832 norm b vector (source) = 0.0309942
+GMRES converged at restart # 2; iteration #0 with error: 4.36958e-07
   [Cycle 70] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4404 ms  [sort=0.029087 field=18.5693 da_wait=0.00014 mover+out=2.55964 exchange+sort+moments=3.27045 B=9.00165 momentsAwait=4.00946 outCopy=0.000631]
+Execution time cycle: 74.3217 ms  [sort=0.02703 field=35.4943 da_wait=0.00025 mover+out=0.04708 exchange+sort+moments=14.6979 B=16.1771 momentsAwait=7.87715 outCopy=0.00098]
  ======= Cycle 71 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0188104 norm b vector (source) = 0.0323603
-GMRES converged at restart # 2; iteration #0 with error: 4.26795e-07
+Initial residual: 0.0178662 norm b vector (source) = 0.0310685
+GMRES converged at restart # 2; iteration #0 with error: 4.46283e-07
   [Cycle 71] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.415 ms  [sort=0.028876 field=18.539 da_wait=0.00012 mover+out=2.5708 exchange+sort+moments=3.19759 B=9.03759 momentsAwait=4.04041 outCopy=0.000641]
+Execution time cycle: 74.3259 ms  [sort=0.02759 field=35.3113 da_wait=0.00015 mover+out=0.05047 exchange+sort+moments=14.6873 B=16.2773 momentsAwait=7.97046 outCopy=0.00131]
  ======= Cycle 72 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0188684 norm b vector (source) = 0.0324354
-GMRES converged at restart # 2; iteration #0 with error: 4.17649e-07
+Initial residual: 0.0179642 norm b vector (source) = 0.0311712
+GMRES converged at restart # 2; iteration #0 with error: 4.43017e-07
   [Cycle 72] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4625 ms  [sort=0.029989 field=18.5769 da_wait=0.00012 mover+out=2.55978 exchange+sort+moments=3.23733 B=9.0031 momentsAwait=4.05463 outCopy=0.000631]
+Execution time cycle: 74.1954 ms  [sort=0.036251 field=35.375 da_wait=0.00016 mover+out=0.046561 exchange+sort+moments=14.7271 B=16.0828 momentsAwait=7.92641 outCopy=0.00103]
  ======= Cycle 73 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.018937 norm b vector (source) = 0.0325217
-GMRES converged at restart # 2; iteration #0 with error: 4.0431e-07
+Initial residual: 0.0180625 norm b vector (source) = 0.0312854
+GMRES converged at restart # 2; iteration #0 with error: 4.34699e-07
   [Cycle 73] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.5126 ms  [sort=0.029437 field=18.665 da_wait=0.00013 mover+out=2.57518 exchange+sort+moments=3.2248 B=8.9736 momentsAwait=4.04392 outCopy=0.000592]
+Execution time cycle: 74.0794 ms  [sort=0.02859 field=35.3378 da_wait=0.00016 mover+out=0.04407 exchange+sort+moments=14.6707 B=16.1231 momentsAwait=7.87387 outCopy=0.00111]
  ======= Cycle 74 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0190072 norm b vector (source) = 0.0326018
-GMRES converged at restart # 2; iteration #0 with error: 3.98576e-07
+Initial residual: 0.0181621 norm b vector (source) = 0.0313965
+GMRES converged at restart # 2; iteration #0 with error: 4.31014e-07
   [Cycle 74] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4797 ms  [sort=0.028536 field=18.6084 da_wait=0.0001 mover+out=2.56192 exchange+sort+moments=3.26185 B=8.98926 momentsAwait=4.02907 outCopy=0.000641]
+Execution time cycle: 74.3034 ms  [sort=0.03668 field=35.424 da_wait=0.00015 mover+out=0.045891 exchange+sort+moments=14.691 B=16.1678 momentsAwait=7.93652 outCopy=0.00128]
  ======= Cycle 75 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0190845 norm b vector (source) = 0.0326831
-GMRES converged at restart # 2; iteration #0 with error: 3.93115e-07
+Initial residual: 0.0182554 norm b vector (source) = 0.0314964
+GMRES converged at restart # 2; iteration #0 with error: 4.20639e-07
   [Cycle 75] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.484 ms  [sort=0.028125 field=18.6603 da_wait=0.00012 mover+out=2.56001 exchange+sort+moments=3.20122 B=9.00403 momentsAwait=4.02955 outCopy=0.000661]
+Execution time cycle: 74.4088 ms  [sort=0.032541 field=35.562 da_wait=0.00015 mover+out=0.04311 exchange+sort+moments=14.6574 B=16.1707 momentsAwait=7.94206 outCopy=0.00079]
  ======= Cycle 76 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0191687 norm b vector (source) = 0.0327756
-GMRES converged at restart # 2; iteration #0 with error: 3.94405e-07
+Initial residual: 0.0183499 norm b vector (source) = 0.0315957
+GMRES converged at restart # 2; iteration #0 with error: 4.0698e-07
   [Cycle 76] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4355 ms  [sort=0.029106 field=18.6183 da_wait=0.00011 mover+out=2.57 exchange+sort+moments=3.21351 B=8.98494 momentsAwait=4.01883 outCopy=0.000641]
+Execution time cycle: 74.1989 ms  [sort=0.03317 field=35.3689 da_wait=0.00023 mover+out=0.047631 exchange+sort+moments=14.6968 B=16.1236 momentsAwait=7.92778 outCopy=0.00089]
  ======= Cycle 77 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192354 norm b vector (source) = 0.0328567
-GMRES converged at restart # 2; iteration #0 with error: 4.09929e-07
+Initial residual: 0.0184387 norm b vector (source) = 0.0316898
+GMRES converged at restart # 2; iteration #0 with error: 4.04546e-07
   [Cycle 77] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4151 ms  [sort=0.029697 field=18.5931 da_wait=0.000111 mover+out=2.56826 exchange+sort+moments=3.22088 B=8.99413 momentsAwait=4.00836 outCopy=0.000641]
+Execution time cycle: 74.1973 ms  [sort=0.030731 field=35.3681 da_wait=0.00015 mover+out=0.04737 exchange+sort+moments=14.6802 B=16.1473 momentsAwait=7.92204 outCopy=0.00134]
  ======= Cycle 78 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.01929 norm b vector (source) = 0.0329192
-GMRES converged at restart # 2; iteration #0 with error: 4.22808e-07
+Initial residual: 0.0185057 norm b vector (source) = 0.0317568
+GMRES converged at restart # 2; iteration #0 with error: 4.12711e-07
   [Cycle 78] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4046 ms  [sort=0.029167 field=18.6531 da_wait=0.00013 mover+out=2.55705 exchange+sort+moments=3.19361 B=8.97602 momentsAwait=3.9949 outCopy=0.000621]
+Execution time cycle: 74.0273 ms  [sort=0.02686 field=35.1936 da_wait=0.00023 mover+out=0.047301 exchange+sort+moments=14.6731 B=16.0828 momentsAwait=8.00227 outCopy=0.00109]
  ======= Cycle 79 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.019354 norm b vector (source) = 0.0329864
-GMRES converged at restart # 2; iteration #0 with error: 4.28183e-07
+Initial residual: 0.0185713 norm b vector (source) = 0.0318142
+GMRES converged at restart # 2; iteration #0 with error: 4.28e-07
   [Cycle 79] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4453 ms  [sort=0.028666 field=18.6301 da_wait=0.000101 mover+out=2.54903 exchange+sort+moments=3.25714 B=8.98468 momentsAwait=3.99493 outCopy=0.000641]
+Execution time cycle: 74.6554 ms  [sort=0.026211 field=35.532 da_wait=0.00027 mover+out=0.048951 exchange+sort+moments=14.6656 B=16.3512 momentsAwait=8.03023 outCopy=0.00097]
  ======= Cycle 80 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0194122 norm b vector (source) = 0.033057
-GMRES converged at restart # 2; iteration #0 with error: 4.3184e-07
+Initial residual: 0.0186248 norm b vector (source) = 0.0318628
+GMRES converged at restart # 2; iteration #0 with error: 4.4341e-07
   [Cycle 80] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.9638 ms  [sort=0.029357 field=19.0856 da_wait=0.00011 mover+out=2.56201 exchange+sort+moments=3.22233 B=8.98945 momentsAwait=4.07429 outCopy=0.000661]
+Execution time cycle: 74.4051 ms  [sort=0.026541 field=35.5095 da_wait=0.00049 mover+out=0.044401 exchange+sort+moments=14.6818 B=16.1606 momentsAwait=7.98071 outCopy=0.00107]
  ======= Cycle 81 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0194709 norm b vector (source) = 0.0331294
-GMRES converged at restart # 2; iteration #0 with error: 4.39626e-07
+Initial residual: 0.0186713 norm b vector (source) = 0.0319007
+GMRES converged at restart # 2; iteration #0 with error: 4.44946e-07
   [Cycle 81] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.1994 ms  [sort=0.029227 field=18.3795 da_wait=0.00013 mover+out=2.5568 exchange+sort+moments=3.21371 B=8.98198 momentsAwait=4.0374 outCopy=0.000651]
+Execution time cycle: 74.4972 ms  [sort=0.02841 field=35.7257 da_wait=0.00027 mover+out=0.04682 exchange+sort+moments=14.6526 B=16.1203 momentsAwait=7.92209 outCopy=0.00099]
  ======= Cycle 82 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195287 norm b vector (source) = 0.0331955
-GMRES converged at restart # 2; iteration #0 with error: 4.43707e-07
+Initial residual: 0.0187083 norm b vector (source) = 0.0319206
+GMRES converged at restart # 2; iteration #0 with error: 4.28091e-07
   [Cycle 82] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3684 ms  [sort=0.028355 field=18.4716 da_wait=0.000141 mover+out=2.56308 exchange+sort+moments=3.19585 B=9.00176 momentsAwait=4.10705 outCopy=0.000641]
+Execution time cycle: 73.9513 ms  [sort=0.02796 field=35.2143 da_wait=0.00026 mover+out=0.04506 exchange+sort+moments=14.636 B=16.095 momentsAwait=7.93174 outCopy=0.00096]
  ======= Cycle 83 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195654 norm b vector (source) = 0.0332265
-GMRES converged at restart # 2; iteration #0 with error: 4.34169e-07
+Initial residual: 0.0187423 norm b vector (source) = 0.031924
+GMRES converged at restart # 2; iteration #0 with error: 3.98785e-07
   [Cycle 83] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3664 ms  [sort=0.029187 field=18.4789 da_wait=0.000121 mover+out=2.55352 exchange+sort+moments=3.22022 B=9.06592 momentsAwait=4.01789 outCopy=0.000631]
+Execution time cycle: 74.2765 ms  [sort=0.02704 field=35.4396 da_wait=0.00016 mover+out=0.045881 exchange+sort+moments=14.6621 B=16.1455 momentsAwait=7.95531 outCopy=0.00087]
  ======= Cycle 84 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195743 norm b vector (source) = 0.0332108
-GMRES converged at restart # 2; iteration #0 with error: 4.26285e-07
+Initial residual: 0.0187729 norm b vector (source) = 0.0319176
+GMRES converged at restart # 2; iteration #0 with error: 3.75406e-07
   [Cycle 84] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3514 ms  [sort=0.029197 field=18.5436 da_wait=0.00013 mover+out=2.55785 exchange+sort+moments=3.20237 B=9.02231 momentsAwait=3.9953 outCopy=0.000611]
+Execution time cycle: 74.3397 ms  [sort=0.0294 field=35.4655 da_wait=0.00026 mover+out=0.04535 exchange+sort+moments=14.6729 B=16.2002 momentsAwait=7.92508 outCopy=0.00106]
  ======= Cycle 85 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195762 norm b vector (source) = 0.0331776
-GMRES converged at restart # 2; iteration #0 with error: 4.26713e-07
+Initial residual: 0.0188099 norm b vector (source) = 0.0319251
+GMRES converged at restart # 2; iteration #0 with error: 3.68592e-07
   [Cycle 85] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4413 ms  [sort=0.029197 field=18.5908 da_wait=0.000131 mover+out=2.5699 exchange+sort+moments=3.21938 B=8.97767 momentsAwait=4.05359 outCopy=0.000641]
+Execution time cycle: 74.4471 ms  [sort=0.02935 field=35.5069 da_wait=0.00014 mover+out=0.0476 exchange+sort+moments=14.7094 B=16.1863 momentsAwait=7.96607 outCopy=0.00126]
  ======= Cycle 86 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195622 norm b vector (source) = 0.033133
-GMRES converged at restart # 2; iteration #0 with error: 4.30364e-07
+Initial residual: 0.0188468 norm b vector (source) = 0.0319545
+GMRES converged at restart # 2; iteration #0 with error: 3.78373e-07
   [Cycle 86] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4179 ms  [sort=0.029377 field=18.6043 da_wait=0.00015 mover+out=2.56866 exchange+sort+moments=3.21177 B=8.97726 momentsAwait=4.02568 outCopy=0.000641]
+Execution time cycle: 74.5506 ms  [sort=0.02605 field=35.5963 da_wait=0.00026 mover+out=0.04749 exchange+sort+moments=14.6866 B=16.2538 momentsAwait=7.93863 outCopy=0.00144]
  ======= Cycle 87 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195467 norm b vector (source) = 0.0330841
-GMRES converged at restart # 2; iteration #0 with error: 4.36864e-07
+Initial residual: 0.0188743 norm b vector (source) = 0.0319936
+GMRES converged at restart # 2; iteration #0 with error: 3.98223e-07
   [Cycle 87] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3958 ms  [sort=0.029137 field=18.62 da_wait=0.00013 mover+out=2.56211 exchange+sort+moments=3.19217 B=8.99708 momentsAwait=3.99459 outCopy=0.000621]
+Execution time cycle: 73.9756 ms  [sort=0.02693 field=35.3158 da_wait=0.00016 mover+out=0.04639 exchange+sort+moments=14.6552 B=16.0872 momentsAwait=7.84286 outCopy=0.00107]
  ======= Cycle 88 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0195244 norm b vector (source) = 0.0330257
-GMRES converged at restart # 2; iteration #0 with error: 4.41164e-07
+Initial residual: 0.0188802 norm b vector (source) = 0.032011
+GMRES converged at restart # 2; iteration #0 with error: 4.15328e-07
   [Cycle 88] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4887 ms  [sort=0.028816 field=18.6557 da_wait=0.00013 mover+out=2.54556 exchange+sort+moments=3.26814 B=8.95335 momentsAwait=4.03638 outCopy=0.000621]
+Execution time cycle: 74.3518 ms  [sort=0.02755 field=35.4169 da_wait=0.00027 mover+out=0.04495 exchange+sort+moments=14.6919 B=16.2393 momentsAwait=7.93003 outCopy=0.00093]
  ======= Cycle 89 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0194912 norm b vector (source) = 0.0329484
-GMRES converged at restart # 2; iteration #0 with error: 4.36281e-07
+Initial residual: 0.0188813 norm b vector (source) = 0.0320066
+GMRES converged at restart # 2; iteration #0 with error: 4.31345e-07
   [Cycle 89] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4231 ms  [sort=0.029257 field=18.5523 da_wait=0.00012 mover+out=2.57394 exchange+sort+moments=3.21486 B=9.00034 momentsAwait=4.05165 outCopy=0.000662]
+Execution time cycle: 74.4836 ms  [sort=0.02822 field=35.4988 da_wait=0.00026 mover+out=0.04598 exchange+sort+moments=14.6262 B=16.3975 momentsAwait=7.88586 outCopy=0.0009]
  ======= Cycle 90 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.019451 norm b vector (source) = 0.0328585
-GMRES converged at restart # 2; iteration #0 with error: 4.35525e-07
+Initial residual: 0.0188851 norm b vector (source) = 0.0319989
+GMRES converged at restart # 2; iteration #0 with error: 4.43674e-07
   [Cycle 90] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4138 ms  [sort=0.029066 field=18.5585 da_wait=0.00013 mover+out=2.56032 exchange+sort+moments=3.17513 B=9.02602 momentsAwait=4.06398 outCopy=0.000641]
+Execution time cycle: 74.5006 ms  [sort=0.02681 field=35.509 da_wait=0.00027 mover+out=0.04416 exchange+sort+moments=14.7004 B=16.2765 momentsAwait=7.94235 outCopy=0.00109]
  ======= Cycle 91 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0193976 norm b vector (source) = 0.0327613
-GMRES converged at restart # 2; iteration #0 with error: 4.48751e-07
+Initial residual: 0.0188857 norm b vector (source) = 0.0319927
+GMRES converged at restart # 2; iteration #0 with error: 4.56573e-07
   [Cycle 91] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.5077 ms  [sort=0.028455 field=18.6062 da_wait=0.00013 mover+out=2.56182 exchange+sort+moments=3.21975 B=9.0262 momentsAwait=4.06454 outCopy=0.000611]
+Execution time cycle: 74.5324 ms  [sort=0.027341 field=35.6133 da_wait=0.00026 mover+out=0.049681 exchange+sort+moments=14.6933 B=16.2663 momentsAwait=7.88139 outCopy=0.00078]
  ======= Cycle 92 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0193398 norm b vector (source) = 0.0326613
-GMRES converged at restart # 2; iteration #0 with error: 4.73465e-07
+Initial residual: 0.0188898 norm b vector (source) = 0.0319888
+GMRES converged at restart # 2; iteration #0 with error: 4.69482e-07
   [Cycle 92] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4302 ms  [sort=0.029307 field=18.5811 da_wait=0.00015 mover+out=2.56346 exchange+sort+moments=3.24698 B=8.99334 momentsAwait=4.01518 outCopy=0.000661]
+Execution time cycle: 74.0897 ms  [sort=0.02891 field=35.3787 da_wait=0.00028 mover+out=0.04951 exchange+sort+moments=14.6958 B=16.0594 momentsAwait=7.87625 outCopy=0.0009]
  ======= Cycle 93 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192882 norm b vector (source) = 0.032566
-GMRES converged at restart # 2; iteration #0 with error: 5.00469e-07
+Initial residual: 0.0188874 norm b vector (source) = 0.0319685
+GMRES converged at restart # 2; iteration #0 with error: 4.77539e-07
   [Cycle 93] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4321 ms  [sort=0.029096 field=18.5864 da_wait=0.00011 mover+out=2.57136 exchange+sort+moments=3.19912 B=9.03463 momentsAwait=4.01069 outCopy=0.000651]
+Execution time cycle: 74.1417 ms  [sort=0.027801 field=35.34 da_wait=0.00027 mover+out=0.04336 exchange+sort+moments=14.6955 B=16.1162 momentsAwait=7.91754 outCopy=0.00102]
  ======= Cycle 94 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192563 norm b vector (source) = 0.0324901
-GMRES converged at restart # 2; iteration #0 with error: 5.13856e-07
+Initial residual: 0.0188966 norm b vector (source) = 0.0319453
+GMRES converged at restart # 2; iteration #0 with error: 4.83195e-07
   [Cycle 94] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.8037 ms  [sort=0.030348 field=18.9895 da_wait=0.000131 mover+out=2.55467 exchange+sort+moments=3.18865 B=8.99286 momentsAwait=4.04693 outCopy=0.000641]
+Execution time cycle: 73.8836 ms  [sort=0.025851 field=35.1425 da_wait=0.00025 mover+out=0.045981 exchange+sort+moments=14.7108 B=16.0766 momentsAwait=7.88087 outCopy=0.00076]
  ======= Cycle 95 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192333 norm b vector (source) = 0.0324319
-GMRES converged at restart # 2; iteration #0 with error: 5.17466e-07
+Initial residual: 0.0189059 norm b vector (source) = 0.0319195
+GMRES converged at restart # 2; iteration #0 with error: 4.83435e-07
   [Cycle 95] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.2119 ms  [sort=0.03062 field=18.422 da_wait=0.00014 mover+out=2.57563 exchange+sort+moments=3.22106 B=8.93863 momentsAwait=4.02321 outCopy=0.000632]
+Execution time cycle: 74.1125 ms  [sort=0.026161 field=35.3435 da_wait=0.00026 mover+out=0.04685 exchange+sort+moments=14.6713 B=16.0618 momentsAwait=7.96191 outCopy=0.00076]
  ======= Cycle 96 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192093 norm b vector (source) = 0.0323863
-GMRES converged at restart # 2; iteration #0 with error: 5.26339e-07
+Initial residual: 0.0189074 norm b vector (source) = 0.0318907
+GMRES converged at restart # 2; iteration #0 with error: 4.88497e-07
   [Cycle 96] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.825 ms  [sort=0.029147 field=18.537 da_wait=0.00011 mover+out=2.54119 exchange+sort+moments=3.7028 B=9.00325 momentsAwait=4.0109 outCopy=0.000661]
+Execution time cycle: 73.9628 ms  [sort=0.02643 field=35.3263 da_wait=0.00037 mover+out=0.04462 exchange+sort+moments=14.6497 B=16.0481 momentsAwait=7.86625 outCopy=0.00111]
  ======= Cycle 97 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192078 norm b vector (source) = 0.032372
-GMRES converged at restart # 2; iteration #0 with error: 5.31713e-07
+Initial residual: 0.018893 norm b vector (source) = 0.0318541
+GMRES converged at restart # 2; iteration #0 with error: 5.03899e-07
   [Cycle 97] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3669 ms  [sort=0.030269 field=18.5304 da_wait=0.000121 mover+out=2.57675 exchange+sort+moments=3.24654 B=8.98578 momentsAwait=3.99643 outCopy=0.000631]
+Execution time cycle: 74.2962 ms  [sort=0.02675 field=35.2153 da_wait=0.00016 mover+out=0.04422 exchange+sort+moments=14.6891 B=16.3712 momentsAwait=7.94802 outCopy=0.00129]
  ======= Cycle 98 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.019224 norm b vector (source) = 0.0323919
-GMRES converged at restart # 2; iteration #0 with error: 5.39064e-07
+Initial residual: 0.0188786 norm b vector (source) = 0.0318163
+GMRES converged at restart # 2; iteration #0 with error: 5.12175e-07
   [Cycle 98] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.4379 ms  [sort=0.029608 field=18.4879 da_wait=0.00013 mover+out=2.5631 exchange+sort+moments=3.25761 B=9.04349 momentsAwait=4.05536 outCopy=0.000691]
+Execution time cycle: 74.4442 ms  [sort=0.026861 field=35.5106 da_wait=0.00015 mover+out=0.043301 exchange+sort+moments=14.6898 B=16.2402 momentsAwait=7.93223 outCopy=0.00108]
  ======= Cycle 99 ======= 
 *** E CALCULATION [GPU] ***
 *** MAXWELL SOLVER [GPU] ***
-Initial residual: 0.0192626 norm b vector (source) = 0.0324491
-GMRES converged at restart # 2; iteration #0 with error: 5.51193e-07
+Initial residual: 0.0188867 norm b vector (source) = 0.0318006
+GMRES converged at restart # 2; iteration #0 with error: 5.09517e-07
   [Cycle 99] Particle sorting: ON
 *** B CALCULATION [GPU] ***
-Execution time cycle: 37.3844 ms  [sort=0.029237 field=18.488 da_wait=0.000121 mover+out=2.57771 exchange+sort+moments=3.21289 B=9.02561 momentsAwait=4.05063 outCopy=0.00014]
+Execution time cycle: 74.5115 ms  [sort=0.02701 field=35.57 da_wait=0.00025 mover+out=0.04775 exchange+sort+moments=14.6753 B=16.2452 momentsAwait=7.9459 outCopy=9e-05]
 
 
 *** SIMULATION ENDED SUCESSFULLY ***
- Total execution    : 20.2198 sec (0.0056166 hours)
- Initialization     : 15.2038 sec
- Pre-cycle setup    : 0.724891 sec (runtime setup + initial moments)
- Cycle loop         : 4.27389 sec over 100 cycles
-                      avg = 42.733 ms/cycle, stddev = 46.3136 ms
- Finalize           : 0.017221 sec
- Simulation Time    : 5.01601 sec (0.00139333 hours) [end of Init -> end of Finalize, i.e. pre-cycle setup + cycle loop + finalize]
+ Simulation Time    : 447.244 sec (0.124234 hours) [end of Init -> end of Finalize, i.e. pre-cycle setup + cycle loop + finalize]
 ***
 
+==PROF== Disconnected from process 733761
+==PROF== Disconnected from process 733762
+[rank 1] gpuCalculateHatFunctions over 101 calls (ms):
+sum = 745.118717
+  mean/avg = 7.377413
+  median   = 6.874112
+  min      = 6.640640
+  max      = 59.669502
+  stdev    = 5.256011
+[rank 0] gpuCalculateHatFunctions over 101 calls (ms):
+sum = 744.377348
+  mean/avg = 7.370073
+  median   = 6.865920
+  min      = 6.667264
+  max      = 59.418625
+  stdev    = 5.231496
+[rank 1] gpuCalculateB over 100 calls (ms):
+sum = 1645.454426
+  mean/avg = 16.454544
+  median   = 16.197120
+  min      = 16.037888
+  max      = 25.703424
+  stdev    = 1.397804
+[rank 0] gpuCalculateB over 100 calls (ms):
+sum = 1639.147581
+  mean/avg = 16.391476
+  median   = 16.121857
+  min      = 16.021503
+  max      = 25.228289
+  stdev    = 1.370520
+[rank 1] gpuMaxwellImage over 1856 calls (ms):
+sum = 439272.366296
+  mean/avg = 236.676921
+  median   = 1.446912
+  min      = 1.345536
+  max      = 419137.156250
+  stdev    = 9737.161199
+[rank 0] gpuMaxwellImage over 1856 calls (ms):
+sum = 435042.333603
+  mean/avg = 234.397809
+  median   = 1.475584
+  min      = 1.345536
+  max      = 414859.156250
+  stdev    = 9637.946827
+==PROF== Report: /afs/pdc.kth.se/home/b/bouziane/Private/iPIC3D-GPU/maxwell_profile_rank0.ncu-rep
+==PROF== Report: /afs/pdc.kth.se/home/b/bouziane/Private/iPIC3D-GPU/maxwell_profile_rank1.ncu-rep

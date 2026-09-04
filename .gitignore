@@ -10,7 +10,7 @@ Debug*
 .github/
 *.old*
 doctmp/
-
+*.ncu-rep
 thirdparty/
 *.nsys-rep
 *.csv

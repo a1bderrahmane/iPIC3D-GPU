@@ -34,9 +34,11 @@ __device__ __forceinline__ int idx3(int i, int j, int k, int ny, int nz) {
 
 __global__ void gpuBCfaceXleft(cudaSolverType* __restrict__ arr, int nx, int ny,
                                int nz, int bcType) {
-  int j = blockIdx.x * blockDim.x + threadIdx.x;
-  int k = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j >= ny || k >= nz)
+  // k (fastest-varying dim, stride 1) is mapped to threadIdx.x so that
+  // consecutive threads in a warp touch consecutive addresses.
+  int k = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (k >= nz || j >= ny)
     return;
   int dst = idx3(0, j, k, ny, nz);
   int src = idx3(1, j, k, ny, nz);
@@ -55,9 +57,11 @@ __global__ void gpuBCfaceXleft(cudaSolverType* __restrict__ arr, int nx, int ny,
 
 __global__ void gpuBCfaceXright(cudaSolverType* __restrict__ arr, int nx,
                                 int ny, int nz, int bcType) {
-  int j = blockIdx.x * blockDim.x + threadIdx.x;
-  int k = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j >= ny || k >= nz)
+  // k (fastest-varying dim, stride 1) is mapped to threadIdx.x so that
+  // consecutive threads in a warp touch consecutive addresses.
+  int k = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (k >= nz || j >= ny)
     return;
   int dst = idx3(nx - 1, j, k, ny, nz);
   int src = idx3(nx - 2, j, k, ny, nz);
@@ -76,9 +80,11 @@ __global__ void gpuBCfaceXright(cudaSolverType* __restrict__ arr, int nx,
 
 __global__ void gpuBCfaceYleft(cudaSolverType* __restrict__ arr, int nx, int ny,
                                int nz, int bcType) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int k = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i >= nx || k >= nz)
+  // k (fastest-varying dim, stride 1) is mapped to threadIdx.x so that
+  // consecutive threads in a warp touch consecutive addresses.
+  int k = blockIdx.x * blockDim.x + threadIdx.x;
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+  if (k >= nz || i >= nx)
     return;
   int dst = idx3(i, 0, k, ny, nz);
   int src = idx3(i, 1, k, ny, nz);
@@ -97,9 +103,11 @@ __global__ void gpuBCfaceYleft(cudaSolverType* __restrict__ arr, int nx, int ny,
 
 __global__ void gpuBCfaceYright(cudaSolverType* __restrict__ arr, int nx,
                                 int ny, int nz, int bcType) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int k = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i >= nx || k >= nz)
+  // k (fastest-varying dim, stride 1) is mapped to threadIdx.x so that
+  // consecutive threads in a warp touch consecutive addresses.
+  int k = blockIdx.x * blockDim.x + threadIdx.x;
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+  if (k >= nz || i >= nx)
     return;
   int dst = idx3(i, ny - 1, k, ny, nz);
   int src = idx3(i, ny - 2, k, ny, nz);
@@ -640,33 +648,32 @@ gpuBatchSelfCopyCornerY(cudaSolverType* const* __restrict__ fields, int nx,
   }
 }
 
+// One thread per (up to 4) XY corner instead of one thread serializing all
+// 4 — this kernel's duration is set by a thread's dependent global-memory
+// round trips, not by warp/block occupancy (measured: same ~3.3us whether
+// nFields is 1 or 9), so giving the corners independent threads lets their
+// loads overlap instead of stacking up. threadIdx.x selects the corner via
+// bit0 = X side, bit1 = Y side; only 4 of the 32 launched lanes do work.
 __global__ void
 gpuBatchSelfCopyCornerZ(cudaSolverType* const* __restrict__ fields, int nx,
                         int ny, int nz, int offset, bool hasYleft,
                         bool hasYright, bool hasXleft, bool hasXright) {
-  cudaSolverType* arr = fields[blockIdx.x];
-  if (threadIdx.x != 0)
+  int corner = threadIdx.x;
+  if (corner >= 4)
     return;
+  bool hasX = (corner & 1) ? hasXright : hasXleft;
+  bool hasY = (corner & 2) ? hasYright : hasYleft;
+  if (!hasX || !hasY)
+    return;
+
+  cudaSolverType* arr = fields[blockIdx.x];
   const int zLoSrc = 1 + offset;
   const int zHiSrc = nz - 2 - offset;
-  if (hasYleft && hasXleft) {
-    arr[idx3(0, 0, 0, ny, nz)] = arr[idx3(0, 0, zHiSrc, ny, nz)];
-    arr[idx3(0, 0, nz - 1, ny, nz)] = arr[idx3(0, 0, zLoSrc, ny, nz)];
-  }
-  if (hasYleft && hasXright) {
-    arr[idx3(nx - 1, 0, 0, ny, nz)] = arr[idx3(nx - 1, 0, zHiSrc, ny, nz)];
-    arr[idx3(nx - 1, 0, nz - 1, ny, nz)] = arr[idx3(nx - 1, 0, zLoSrc, ny, nz)];
-  }
-  if (hasYright && hasXleft) {
-    arr[idx3(0, ny - 1, 0, ny, nz)] = arr[idx3(0, ny - 1, zHiSrc, ny, nz)];
-    arr[idx3(0, ny - 1, nz - 1, ny, nz)] = arr[idx3(0, ny - 1, zLoSrc, ny, nz)];
-  }
-  if (hasYright && hasXright) {
-    arr[idx3(nx - 1, ny - 1, 0, ny, nz)] =
-        arr[idx3(nx - 1, ny - 1, zHiSrc, ny, nz)];
-    arr[idx3(nx - 1, ny - 1, nz - 1, ny, nz)] =
-        arr[idx3(nx - 1, ny - 1, zLoSrc, ny, nz)];
-  }
+  const int xIdx = (corner & 1) ? nx - 1 : 0;
+  const int yIdx = (corner & 2) ? ny - 1 : 0;
+
+  arr[idx3(xIdx, yIdx, 0, ny, nz)] = arr[idx3(xIdx, yIdx, zHiSrc, ny, nz)];
+  arr[idx3(xIdx, yIdx, nz - 1, ny, nz)] = arr[idx3(xIdx, yIdx, zLoSrc, ny, nz)];
 }
 
 // =========================================================================
@@ -803,24 +810,24 @@ void gpuBCface(int nx, int ny, int nz, GPUFieldArray3& gpuArr, int bcFaceXright,
   // X boundaries
   if (vct->getXleft_neighbor() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((ny + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (ny + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceXleft<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceXleft);
   }
   if (vct->getXright_neighbor() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((ny + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (ny + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceXright<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceXright);
   }
 
   // Y boundaries
   if (vct->getYleft_neighbor() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((nx + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (nx + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceYleft<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceYleft);
   }
   if (vct->getYright_neighbor() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((nx + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (nx + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceYright<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceYright);
   }
 
@@ -848,22 +855,22 @@ void gpuBCface_P(int nx, int ny, int nz, GPUFieldArray3& gpuArr,
 
   if (vct->getXleft_neighbor_P() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((ny + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (ny + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceXleft<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceXleft);
   }
   if (vct->getXright_neighbor_P() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((ny + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (ny + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceXright<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceXright);
   }
   if (vct->getYleft_neighbor_P() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((nx + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (nx + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceYleft<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceYleft);
   }
   if (vct->getYright_neighbor_P() == MPI_PROC_NULL) {
     dim3 block(BC_BLOCK, BC_BLOCK);
-    dim3 grid((nx + BC_BLOCK - 1) / BC_BLOCK, (nz + BC_BLOCK - 1) / BC_BLOCK);
+    dim3 grid((nz + BC_BLOCK - 1) / BC_BLOCK, (nx + BC_BLOCK - 1) / BC_BLOCK);
     gpuBCfaceYright<<<grid, block, 0, stream>>>(d, nx, ny, nz, bcFaceYright);
   }
   if (vct->getZleft_neighbor_P() == MPI_PROC_NULL) {

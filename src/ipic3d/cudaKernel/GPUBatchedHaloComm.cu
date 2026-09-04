@@ -745,7 +745,7 @@ void EMfields3D::gpuCompleteHaloPhases(const HaloTopologyPlan& topology,
         d_ptrs, nx, ny, nz, offset, topology.present[0], topology.present[1],
         topology.present[4], topology.present[5]);
   else if (topology.selfAxis[2])
-    gpuBatchSelfCopyCornerZ<<<nFields, 1, 0, stream>>>(
+    gpuBatchSelfCopyCornerZ<<<nFields, 32, 0, stream>>>(
         d_ptrs, nx, ny, nz, offset, topology.present[2], topology.present[3],
         topology.present[0], topology.present[1]);
 

@@ -343,20 +343,21 @@ if(HIP_ON)
   target_link_libraries(iPIC3Dlib PRIVATE hip::device)
   target_link_libraries(iPIC3Dlib PRIVATE hip::host)
 
-  if(CUDA_GRAPH)
-    # roctx provides the ROCTX_API markers used as the NVTX-equivalent
-    # profiling ranges (roctxRangePushA/roctxRangePop, see hipifly.hpp).
-    find_library(ROCTX_LIBRARY
-      NAMES roctx64
-      HINTS ${ROCM_PATH} $ENV{ROCM_PATH}
-      PATH_SUFFIXES lib lib64
-      )
-    if(NOT ROCTX_LIBRARY)
-      message(FATAL_ERROR "roctx64 is required (HIP_ON and CUDA_GRAPH are both ON) but was not found. "
-        "Set ROCM_PATH to the ROCm install prefix.")
-    endif()
-    target_link_libraries(iPIC3Dlib PRIVATE ${ROCTX_LIBRARY})
+  # roctx provides the ROCTX_API markers used as the NVTX-equivalent
+  # profiling ranges (roctxRangePushA/roctxRangePop, see hipifly.hpp).
+  # Needed unconditionally (not just under CUDA_GRAPH): gpuMaxwellImage's
+  # NVTX range is compiled in for every build so it can be profiled with
+  # ncu/rocprof regardless of whether the CUDA-graph path is enabled.
+  find_library(ROCTX_LIBRARY
+    NAMES roctx64
+    HINTS ${ROCM_PATH} $ENV{ROCM_PATH}
+    PATH_SUFFIXES lib lib64
+    )
+  if(NOT ROCTX_LIBRARY)
+    message(FATAL_ERROR "roctx64 is required (HIP_ON is ON) but was not found. "
+      "Set ROCM_PATH to the ROCm install prefix.")
   endif()
+  target_link_libraries(iPIC3Dlib PRIVATE ${ROCTX_LIBRARY})
 
   # On Cray systems the MPI wrapper (CC) handles MPI includes implicitly,
   # but HIP files are compiled with amdclang++ which needs explicit paths.

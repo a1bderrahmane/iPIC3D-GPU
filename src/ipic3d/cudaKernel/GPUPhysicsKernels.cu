@@ -39,10 +39,12 @@ k_MUdotSpecies(T* __restrict__ MUdotX, T* __restrict__ MUdotY,
                const T* __restrict__ By_ext, const T* __restrict__ Bz_ext,
                const T* __restrict__ rhons_is, T beta, T prefactor, int nxn,
                int nyn, int nzn, bool firstSpecies) {
-  int i = blockIdx.x * BX + threadIdx.x + 1;
-  int j = blockIdx.y * BY + threadIdx.y + 1;
-  int k = blockIdx.z * BZ + threadIdx.z + 1;
-  if (i > nxn - 2 || j > nyn - 2 || k > nzn - 2)
+  // k (fastest-varying dim, stride 1) is mapped to threadIdx.x so that
+  // consecutive threads in a warp touch consecutive addresses.
+  int k = blockIdx.x * blockDim.x + threadIdx.x + 1;
+  int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  int i = blockIdx.z * blockDim.z + threadIdx.z + 1;
+  if (k > nzn - 2 || j > nyn - 2 || i > nxn - 2)
     return;
 
   int idx = IDX3(i, j, k, nyn, nzn);
@@ -80,8 +82,12 @@ void gpuMUdotSpecies(cudaSolverType* MUdotX, cudaSolverType* MUdotY,
                      const cudaSolverType* rhons_is, cudaSolverType beta,
                      cudaSolverType prefactor, int nxn, int nyn, int nzn,
                      bool firstSpecies, cudaStream_t stream) {
-  dim3 grid = interiorGrid3D(nxn, nyn, nzn);
-  dim3 block(BX, BY, BZ);
+  // Block is shaped so threadIdx.x walks k, the contiguous memory axis
+  // (see the index mapping in k_MUdotSpecies above), for coalesced access.
+  dim3 block(32, 8, 1);
+  dim3 grid(((nzn - 2) + block.x - 1) / block.x,
+            ((nyn - 2) + block.y - 1) / block.y,
+            ((nxn - 2) + block.z - 1) / block.z);
   k_MUdotSpecies<<<grid, block, 0, stream>>>(
       MUdotX, MUdotY, MUdotZ, vX, vY, vZ, Bxn, Byn, Bzn, Bx_ext, By_ext, Bz_ext,
       rhons_is, beta, prefactor, nxn, nyn, nzn, firstSpecies);
